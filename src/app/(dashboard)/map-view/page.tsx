@@ -1,31 +1,5 @@
 "use client";
-
-import Image from "next/image";
 import DashboardPageShell from "@/components/DashboardPageShell";
-
-export default function MapView() {
-  return (
-    <DashboardPageShell
-      title="Map View"
-      description="Mine tunnel network and checkpoint monitoring"
-    >
-
-      <div className="overflow-hidden rounded-xl border border-slate-800 bg-black">
-
-        <div className="relative aspect-[16/9] w-full">
-
-          <Image
-            src="/mine-tunnel-map.jpeg"
-            alt="Mine tunnel network"
-            fill
-            priority
-            className="object-contain"
-          />
-
-        </div>
-
-      </div>
-
-    </DashboardPageShell>
-  );
-}
+import MineMap from "@/components/MineMap";
+import { useAllHelmetData } from "@/hooks/useHelmetData";
+export default function MapView(){const{helmets,loading,error}=useAllHelmetData();return <DashboardPageShell title="Map View" description="Mine tunnel network and checkpoint monitoring">{error&&<div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">{error}</div>}{loading?<div className="text-xs text-slate-500">Loading map data…</div>:<MineMap helmets={helmets} selectedId={null} onSelectHelmet={()=>{}}/>}</DashboardPageShell>}

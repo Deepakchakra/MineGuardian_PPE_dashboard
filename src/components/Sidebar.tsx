@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAllHelmetData } from "@/hooks/useHelmetData";
 
 import {
   Activity,
@@ -67,6 +68,9 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { helmets } = useAllHelmetData();
+  const first = helmets[0];
+  const online = !!first && (first.wifi_rssi !== null || first.uptime !== null || first.temperature !== null);
 
   return (
     <aside className="sticky top-0 flex h-screen w-[190px] shrink-0 flex-col border-r border-slate-800 bg-[#050b10] text-white">
@@ -124,63 +128,21 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Helmet Status */}
+      {/* Live Helmet Status */}
       <div className="m-2 rounded-lg border border-slate-800 bg-[#081118] p-3">
-
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold">
-            HELMET-01
-          </span>
-
-          <span className="flex items-center gap-1 text-[8px] text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            CONNECTED
+          <span className="text-[11px] font-semibold">{first ? first.helmetId.replace("_", "-").toUpperCase() : "NO HELMET"}</span>
+          <span className={`flex items-center gap-1 text-[8px] ${online ? "text-emerald-400" : "text-slate-500"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-slate-600"}`} />
+            {online ? "ACTIVE" : "OFFLINE"}
           </span>
         </div>
-
-        <div className="my-4 flex justify-center">
-          <HardHat className="h-12 w-12 text-slate-300" />
-        </div>
-
-        <div className="space-y-3 text-[9px]">
-
-          <div>
-            <p className="text-slate-500">
-              Signal Strength
-            </p>
-            <p className="mt-1 font-semibold text-white">
-              -63 dBm
-            </p>
-          </div>
-
-          <div>
-            <p className="text-slate-500">
-              Uptime
-            </p>
-            <p className="mt-1 font-semibold text-white">
-              00:01:33
-            </p>
-          </div>
-
-          <div>
-            <p className="text-slate-500">
-              Worker ID
-            </p>
-            <p className="mt-1 font-semibold text-white">
-              WORKER-07
-            </p>
-          </div>
-
-          <div>
-            <p className="text-slate-500">
-              Location
-            </p>
-            <p className="mt-1 font-semibold text-white">
-              Checkpoint 3
-            </p>
-          </div>
-
-        </div>
+        {first ? <div className="space-y-3 pt-4 text-[9px]">
+          <div><p className="text-slate-500">Signal Strength</p><p className="mt-1 font-semibold text-white">{first.wifi_rssi !== null ? `${first.wifi_rssi} dBm` : "N/A"}</p></div>
+          <div><p className="text-slate-500">Uptime</p><p className="mt-1 font-semibold text-white">{first.uptime !== null ? `${first.uptime}s` : "N/A"}</p></div>
+          <div><p className="text-slate-500">Worker ID</p><p className="mt-1 font-semibold text-white">{first.workerName || first.workerId || "N/A"}</p></div>
+          <div><p className="text-slate-500">Location</p><p className="mt-1 font-semibold text-white">{first.checkpoint.where || "N/A"}</p></div>
+        </div> : <p className="pt-4 text-[9px] text-slate-600">No live helmet data</p>}
       </div>
 
     </aside>
