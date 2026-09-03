@@ -4,24 +4,11 @@ import Image from "next/image";
 import {
   Activity,
   Bell,
-  ChevronDown,
-  CircleAlert,
   Cloud,
-  Gauge,
-  HardHat,
-  Home as HomeIcon,
-  Map,
-  Radio,
-  Settings,
-  ShieldAlert,
-  Signal,
   Thermometer,
-  User,
   Wifi,
   Wind,
-  Zap,
 } from "lucide-react";
-
 import { useEffect, useState } from "react";
 
 import {
@@ -38,6 +25,7 @@ import {
 import { useHelmetData } from "@/hooks/useHelmetData";
 
 const MINE_MAP_IMAGE = "/mine-tunnel-map.jpeg";
+
 type MotionPoint = {
   time: string;
 
@@ -49,13 +37,18 @@ type MotionPoint = {
   gyro_y: number | null;
   gyro_z: number | null;
 };
+
 export default function Home() {
   const { data, loading, error, lastUpdated } =
     useHelmetData("helmet_01");
 
-  const [motionHistory, setMotionHistory] = useState<
-    MotionPoint[]
-  >([]);
+  const [motionHistory, setMotionHistory] = useState<MotionPoint[]>(
+    []
+  );
+
+  /* ============================================================
+     MOTION HISTORY
+  ============================================================ */
 
   useEffect(() => {
     if (loading) return;
@@ -75,7 +68,6 @@ export default function Home() {
     setMotionHistory((previous) => {
       const updated = [...previous, newPoint];
 
-      // Keep only the latest 30 readings
       return updated.slice(-30);
     });
   }, [
@@ -88,11 +80,16 @@ export default function Home() {
     data.mpu6050.gyro_z,
   ]);
 
+  /* ============================================================
+     LOADING
+  ============================================================ */
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#02070b] text-white">
         <div className="text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-red-500" />
+
           <p className="text-sm text-slate-400">
             Connecting to MineGuardian...
           </p>
@@ -101,18 +98,25 @@ export default function Home() {
     );
   }
 
+  /* ============================================================
+     SENSOR VALUES
+  ============================================================ */
+
   const temperature = data.temperature;
   const humidity = data.humidity;
+
   const mq2 = data.mq2?.raw;
   const mq7 = data.mq7?.raw;
 
-  const vibration = data.mpu6050?.acceleration_magnitude;
-  const rotation = data.mpu6050?.rotation_magnitude;
+  const vibration =
+    data.mpu6050?.acceleration_magnitude;
 
-  const motionStatus = data.mpu6050?.motion_status;
+  const motionStatus =
+    data.mpu6050?.motion_status;
 
   const temperatureDanger =
-    temperature !== null && temperature >= 38;
+    temperature !== null &&
+    temperature >= 38;
 
   const gasDanger =
     data.gas_status === "DANGER" ||
@@ -124,463 +128,220 @@ export default function Home() {
     motionStatus.toUpperCase() !== "NORMAL";
 
   const emergency =
-    temperatureDanger || gasDanger || motionDanger;
+    temperatureDanger ||
+    gasDanger ||
+    motionDanger;
 
   return (
     <main className="min-h-screen bg-[#02070b] text-white">
-      <div className="flex min-h-screen">
 
-        {/* SIDEBAR */}
-        <aside className="hidden w-[235px] shrink-0 border-r border-slate-800 bg-[#050b10] lg:block">
+      <div className="min-h-screen">
 
-          {/* Logo */}
-          <div className="flex h-[82px] items-center gap-3 border-b border-slate-800 px-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-600/40 bg-red-600/10">
-              <ShieldAlert className="h-7 w-7 text-red-500" />
-            </div>
+        {/* ======================================================
+            MAIN CONTENT
+        ====================================================== */}
 
-            <div>
-              <h1 className="text-[18px] font-bold">
-                MineGuardian
-              </h1>
+        <section className="min-w-0">
 
-              <p className="text-[11px] text-slate-500">
-                Mining Safety System
-              </p>
-            </div>
-          </div>
+          <div className="mx-auto w-full max-w-[1800px] space-y-4 p-3 sm:p-4 lg:p-5">
 
-          {/* Navigation */}
-          <nav className="space-y-1 p-3">
+            {/* ==================================================
+                SENSOR OVERVIEW
+            ================================================== */}
 
-            <NavItem
-              icon={<HomeIcon size={18} />}
-              label="Dashboard"
-              active
-            />
+            <div
+              className={`min-w-0 rounded-lg border p-3 sm:p-4 ${
+                emergency
+                  ? "border-red-900/70 bg-[#071016]"
+                  : "border-slate-800 bg-[#071016]"
+              }`}
+            >
 
-            <NavItem
-              icon={<Activity size={18} />}
-              label="Live Monitoring"
-            />
+              {/* SENSOR HEADER */}
 
-            <NavItem
-              icon={<HardHat size={18} />}
-              label="Helmets"
-            />
+              <div className="mb-3 flex items-center justify-between">
 
-            <NavItem
-              icon={<CircleAlert size={18} />}
-              label="Alerts"
-              badge="3"
-            />
+                <div>
+                  <h2 className="text-sm font-semibold text-white">
+                    Live Sensor Overview
+                  </h2>
 
-            <NavItem
-              icon={<Radio size={18} />}
-              label="Commands"
-            />
-
-            <NavItem
-              icon={<Activity size={18} />}
-              label="History & Logs"
-            />
-
-            <NavItem
-              icon={<Map size={18} />}
-              label="Map View"
-            />
-
-            <NavItem
-              icon={<Gauge size={18} />}
-              label="Reports"
-            />
-
-            <NavItem
-              icon={<Settings size={18} />}
-              label="Settings"
-            />
-          </nav>
-
-          {/* Helmet */}
-          <div className="absolute bottom-4 left-3 right-auto w-[211px] rounded-lg border border-slate-800 bg-[#081118] p-4">
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">
-                HELMET-01
-              </span>
-
-              <span className="flex items-center gap-1 text-[9px] text-green-400">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                CONNECTED
-              </span>
-            </div>
-
-            <div className="mt-5 flex items-center justify-center">
-              <HardHat className="h-20 w-20 text-slate-300" />
-            </div>
-
-            <div className="mt-4 space-y-4 text-xs">
-
-              <div>
-                <p className="text-slate-500">
-                  Signal Strength
-                </p>
-
-                <p className="mt-1 font-medium">
-                  {data.wifi_rssi ?? "--"} dBm
-                </p>
-              </div>
-
-              <div>
-                <p className="text-slate-500">
-                  Uptime
-                </p>
-
-                <p className="mt-1 font-medium">
-                  {formatUptime(data.uptime)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-slate-500">
-                  Worker ID
-                </p>
-
-                <p className="mt-1 font-medium">
-                  WORKER-07
-                </p>
-              </div>
-
-              <div>
-                <p className="text-slate-500">
-                  Location
-                </p>
-
-                <p className="mt-1 font-medium">
-                  Checkpoint 3
-                </p>
-              </div>
-
-            </div>
-          </div>
-        </aside>
-
-        {/* MAIN */}
-        <section className="min-w-0 flex-1">
-
-          {/* HEADER */}
-          <header className="flex h-[72px] items-center justify-between border-b border-slate-800 bg-[#050b10] px-5">
-
-            <div className="flex items-center gap-3">
-
-              <div
-                className={`flex items-center gap-2 rounded-md border px-4 py-2 text-xs font-semibold ${
-                  emergency
-                    ? "border-red-900/70 bg-red-950/40 text-red-400"
-                    : "border-green-900/50 bg-green-950/20 text-green-400"
-                }`}
-              >
-                <CircleAlert size={15} />
-
-                {emergency
-                  ? "EMERGENCY"
-                  : "SYSTEM NORMAL"}
-              </div>
-
-              <span className="hidden text-xs text-slate-400 md:block">
-                {emergency
-                  ? "Possible safety condition detected"
-                  : "All monitored systems operating normally"}
-              </span>
-
-            </div>
-
-            <div className="flex items-center gap-5">
-
-              <div className="hidden text-right md:block">
-                <p className="text-sm font-medium">
-                  {new Date().toLocaleTimeString()}
-                </p>
-
-                <p className="text-[10px] text-slate-500">
-                  {new Date().toLocaleDateString()}
-                </p>
-              </div>
-
-              <div className="relative">
-                <Bell size={19} className="text-slate-300" />
-
-                {emergency && (
-                  <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px]">
-                    3
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 border-l border-slate-800 pl-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800">
-                  <User size={16} />
-                </div>
-
-                <div className="hidden sm:block">
-                  <p className="text-xs">
-                    Operator
-                  </p>
-                  <p className="text-[10px] text-slate-500">
-                    Control Room
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Real-time helmet telemetry
                   </p>
                 </div>
 
-                <ChevronDown size={14} />
-              </div>
-
-            </div>
-          </header>
-
-          <div className="space-y-4 p-4">
-
-            {/* TOP GRID */}
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[216px_1fr]">
-
-              {/* ALERT */}
-              <div
-                className={`rounded-lg border p-4 ${
-                  emergency
-                    ? "border-red-600 bg-red-950/20"
-                    : "border-slate-800 bg-[#071016]"
-                }`}
-              >
-
-                <h2
-                  className={`text-sm font-bold ${
+                <span
+                  className={`flex items-center gap-1.5 text-[9px] font-semibold ${
                     emergency
-                      ? "text-red-500"
-                      : "text-slate-200"
+                      ? "text-red-400"
+                      : "text-green-400"
                   }`}
                 >
-                  {emergency
-                    ? "EMERGENCY ALERT"
-                    : "SYSTEM STATUS"}
-                </h2>
-
-                <div className="mt-5 flex justify-center">
-                  <div
-                    className={`flex h-16 w-16 items-center justify-center rounded-full border ${
+                  <span
+                    className={`h-2 w-2 animate-pulse rounded-full ${
                       emergency
-                        ? "border-red-500 bg-red-500/10"
-                        : "border-green-500 bg-green-500/10"
+                        ? "bg-red-500"
+                        : "bg-green-500"
                     }`}
-                  >
-                    <CircleAlert
-                      className={
-                        emergency
-                          ? "text-red-500"
-                          : "text-green-500"
-                      }
-                      size={34}
-                    />
-                  </div>
-                </div>
+                  />
 
-                <div className="mt-5 space-y-3 text-xs">
-
-                  <div>
-                    <span className="text-slate-500">
-                      HELMET
-                    </span>
-
-                    <p className="mt-1">
-                      HELMET-01
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-slate-500">
-                      CONDITION
-                    </span>
-
-                    <p
-                      className={`mt-1 ${
-                        emergency
-                          ? "text-red-400"
-                          : "text-green-400"
-                      }`}
-                    >
-                      {emergency
-                        ? "POSSIBLE SAFETY EVENT"
-                        : "NORMAL"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-slate-500">
-                      STATUS
-                    </span>
-
-                    <p
-                      className={`mt-1 font-semibold ${
-                        emergency
-                          ? "text-red-400"
-                          : "text-green-400"
-                      }`}
-                    >
-                      {emergency
-                        ? "CRITICAL"
-                        : "NORMAL"}
-                    </p>
-                  </div>
-
-                </div>
-
-                <button className="mt-5 w-full rounded-md bg-red-700 py-3 text-xs font-semibold transition hover:bg-red-600">
-                  ACTIVATE HELMET ALERT
-                </button>
+                  {emergency ? "ALERT" : "LIVE"}
+                </span>
 
               </div>
 
-              {/* SENSOR OVERVIEW */}
-              <div className="min-w-0 rounded-lg border border-slate-800 bg-[#071016] p-3">
+              {/* SENSOR CARDS */}
 
-                <h2 className="mb-3 text-sm font-semibold">
-                  Live Sensor Overview
-                </h2>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7">
 
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
+                <SensorCard
+                  icon={<Thermometer size={17} />}
+                  title="Temperature"
+                  value={
+                    temperature !== null
+                      ? `${temperature} °C`
+                      : "--"
+                  }
+                  status={
+                    temperatureDanger
+                      ? "DANGER"
+                      : "NORMAL"
+                  }
+                  danger={temperatureDanger}
+                />
 
-                  <SensorCard
-                    icon={<Thermometer size={17} />}
-                    title="Temperature"
-                    value={
-                      temperature !== null
-                        ? `${temperature} °C`
-                        : "--"
-                    }
-                    status={
-                      temperatureDanger
-                        ? "DANGER"
-                        : "NORMAL"
-                    }
-                    danger={temperatureDanger}
-                  />
+                <SensorCard
+                  icon={<Cloud size={17} />}
+                  title="Humidity"
+                  value={
+                    humidity !== null
+                      ? `${humidity} %`
+                      : "--"
+                  }
+                  status="NORMAL"
+                />
 
-                  <SensorCard
-                    icon={<Cloud size={17} />}
-                    title="Humidity"
-                    value={
-                      humidity !== null
-                        ? `${humidity} %`
-                        : "--"
-                    }
-                    status="NORMAL"
-                  />
+                <SensorCard
+                  icon={<Wind size={17} />}
+                  title="MQ-2 Gas"
+                  value={
+                    mq2 !== null &&
+                    mq2 !== undefined
+                      ? `${mq2} PPM`
+                      : "--"
+                  }
+                  status={
+                    data.mq2?.status ?? "NORMAL"
+                  }
+                  danger={
+                    data.mq2?.status === "DANGER"
+                  }
+                />
 
-                  <SensorCard
-                    icon={<Wind size={17} />}
-                    title="MQ-2 Gas"
-                    value={
-                      mq2 !== null
-                        ? `${mq2} PPM`
-                        : "--"
-                    }
-                    status={
-                      data.mq2?.status ?? "NORMAL"
-                    }
-                    danger={
-                      data.mq2?.status === "DANGER"
-                    }
-                  />
+                <SensorCard
+                  icon={<Cloud size={17} />}
+                  title="MQ-7 Gas"
+                  value={
+                    mq7 !== null &&
+                    mq7 !== undefined
+                      ? `${mq7} PPM`
+                      : "--"
+                  }
+                  status={
+                    data.mq7?.status ?? "NORMAL"
+                  }
+                  danger={
+                    data.mq7?.status === "DANGER"
+                  }
+                />
 
-                  <SensorCard
-                    icon={<Cloud size={17} />}
-                    title="MQ-7 Gas"
-                    value={
-                      mq7 !== null
-                        ? `${mq7} PPM`
-                        : "--"
-                    }
-                    status={
-                      data.mq7?.status ?? "NORMAL"
-                    }
-                    danger={
-                      data.mq7?.status === "DANGER"
-                    }
-                  />
+                <SensorCard
+                  icon={<Activity size={17} />}
+                  title="Vibration"
+                  value={
+                    vibration !== null &&
+                    vibration !== undefined
+                      ? `${vibration}`
+                      : "--"
+                  }
+                  status={
+                    motionDanger
+                      ? "DANGER"
+                      : "NORMAL"
+                  }
+                  danger={motionDanger}
+                />
 
-                  <SensorCard
-                    icon={<Activity size={17} />}
-                    title="Vibration"
-                    value={
-                      vibration !== null
-                        ? `${vibration}`
-                        : "--"
-                    }
-                    status={
-                      motionDanger
-                        ? "DANGER"
-                        : "NORMAL"
-                    }
-                    danger={motionDanger}
-                  />
+                <SensorCard
+                  icon={<Wifi size={17} />}
+                  title="Wi-Fi Signal"
+                  value={
+                    data.wifi_rssi !== null
+                      ? `${data.wifi_rssi} dBm`
+                      : "--"
+                  }
+                  status="GOOD"
+                />
 
-                  <SensorCard
-                    icon={<Wifi size={17} />}
-                    title="Wi-Fi Signal"
-                    value={
-                      data.wifi_rssi !== null
-                        ? `${data.wifi_rssi} dBm`
-                        : "--"
-                    }
-                    status="GOOD"
-                  />
-
-                  <SensorCard
-                    icon={<Activity size={17} />}
-                    title="Motion Status"
-                    value={
-                      motionStatus ?? "--"
-                    }
-                    status={
-                      motionStatus ?? "NORMAL"
-                    }
-                    danger={motionDanger}
-                  />
-
-                </div>
+                <SensorCard
+                  icon={<Activity size={17} />}
+                  title="Motion Status"
+                  value={
+                    motionStatus ?? "--"
+                  }
+                  status={
+                    motionStatus ?? "NORMAL"
+                  }
+                  danger={motionDanger}
+                />
 
               </div>
-
             </div>
 
-            {/* MINE MAP + RIGHT PANEL */}
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+            {/* ==================================================
+                MINE MAP + RIGHT PANEL
+            ================================================== */}
 
-              {/* MINE MAP */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+
+              {/* =================================================
+                  MINE MAP
+              ================================================= */}
+
               <MineMap />
 
-              {/* RIGHT PANEL */}
-              <div className="space-y-4">
+              {/* =================================================
+                  RIGHT PANEL
+              ================================================= */}
 
-                {/* COMMAND */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1">
+
+                {/* =================================================
+                    HELMET ALERT COMMAND
+                ================================================= */}
+
                 <div className="rounded-lg border border-slate-800 bg-[#071016] p-4">
 
-                  <h2 className="text-sm font-semibold">
+                  <h2 className="text-sm font-semibold text-white">
                     Helmet Alert Command
                   </h2>
 
-                  <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-red-700 py-3 text-xs font-semibold hover:bg-red-600">
+                  <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-red-700 py-3 text-xs font-semibold text-white transition hover:bg-red-600">
                     <Bell size={15} />
                     ACTIVATE HELMET ALERT
                   </button>
 
-                  <p className="mt-3 text-[10px] text-slate-500">
-                    Send audible alert command to the helmet.
+                  <p className="mt-3 text-[10px] leading-4 text-slate-500">
+                    Send an audible alert command to the selected
+                    helmet.
                   </p>
 
                   <label className="mt-4 block text-[10px] text-slate-400">
                     Duration (Seconds)
                   </label>
 
-                  <select className="mt-2 w-full rounded-md border border-slate-700 bg-[#0a131a] px-3 py-2 text-xs outline-none">
+                  <select className="mt-2 w-full rounded-md border border-slate-700 bg-[#0a131a] px-3 py-2 text-xs text-white outline-none focus:border-red-700">
                     <option>10 Seconds</option>
                     <option>20 Seconds</option>
                     <option>30 Seconds</option>
@@ -591,16 +352,19 @@ export default function Home() {
                   </label>
 
                   <input
-                    className="mt-2 w-full rounded-md border border-slate-700 bg-[#0a131a] px-3 py-2 text-xs outline-none"
+                    className="mt-2 w-full rounded-md border border-slate-700 bg-[#0a131a] px-3 py-2 text-xs text-white outline-none placeholder:text-slate-600 focus:border-red-700"
                     placeholder="Return to safe zone immediately."
                   />
 
                 </div>
 
-                {/* HELMET INFO */}
+                {/* =================================================
+                    HELMET INFORMATION
+                ================================================= */}
+
                 <div className="rounded-lg border border-slate-800 bg-[#071016] p-4">
 
-                  <h2 className="text-sm font-semibold">
+                  <h2 className="text-sm font-semibold text-white">
                     Helmet Information
                   </h2>
 
@@ -651,14 +415,15 @@ export default function Home() {
                     />
 
                   </div>
-
                 </div>
 
               </div>
-
             </div>
 
-            {/* MPU SECTION */}
+            {/* ==================================================
+                MPU6050 GRAPHS
+            ================================================== */}
+
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
               <MotionGraph
@@ -675,7 +440,10 @@ export default function Home() {
 
             </div>
 
-            {/* ERROR */}
+            {/* ==================================================
+                ERROR
+            ================================================== */}
+
             {error && (
               <div className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-xs text-red-400">
                 Firebase Error: {error}
@@ -689,41 +457,9 @@ export default function Home() {
   );
 }
 
-/* ---------------- COMPONENTS ---------------- */
-
-function NavItem({
-  icon,
-  label,
-  active = false,
-  badge,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  badge?: string;
-}) {
-  return (
-    <div
-      className={`flex cursor-pointer items-center gap-3 rounded-md px-3 py-3 text-sm ${
-        active
-          ? "border border-red-900/60 bg-red-950/30 text-red-400"
-          : "text-slate-400 hover:bg-slate-900 hover:text-white"
-      }`}
-    >
-      {icon}
-
-      <span className="flex-1">
-        {label}
-      </span>
-
-      {badge && (
-        <span className="rounded-full bg-red-700 px-2 py-0.5 text-[9px] text-white">
-          {badge}
-        </span>
-      )}
-    </div>
-  );
-}
+/* ==============================================================
+   SENSOR CARD
+============================================================== */
 
 function SensorCard({
   icon,
@@ -739,17 +475,34 @@ function SensorCard({
   danger?: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-md border border-slate-800 bg-[#0a141b] p-3">
+    <div
+      className={`min-w-0 rounded-md border bg-[#0a141b] p-3 ${
+        danger
+          ? "border-red-900/70"
+          : "border-slate-800"
+      }`}
+    >
 
-      <div className="flex items-center gap-2 text-xs text-slate-300">
-        {icon}
+      <div className="flex min-w-0 items-center gap-2 text-xs text-slate-300">
+
+        <span
+          className={`shrink-0 ${
+            danger
+              ? "text-red-400"
+              : "text-slate-400"
+          }`}
+        >
+          {icon}
+        </span>
+
         <span className="truncate">
           {title}
         </span>
+
       </div>
 
       <p
-        className={`mt-4 text-lg font-bold ${
+        className={`mt-4 truncate text-lg font-bold ${
           danger
             ? "text-red-500"
             : "text-white"
@@ -759,7 +512,7 @@ function SensorCard({
       </p>
 
       <p
-        className={`mt-2 text-[9px] font-semibold ${
+        className={`mt-2 truncate text-[9px] font-semibold ${
           danger
             ? "text-red-500"
             : "text-green-400"
@@ -772,6 +525,10 @@ function SensorCard({
   );
 }
 
+/* ==============================================================
+   INFO ROW
+============================================================== */
+
 function InfoRow({
   label,
   value,
@@ -782,18 +539,18 @@ function InfoRow({
   green?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-slate-800/70 pb-2">
+    <div className="flex items-center justify-between gap-4 border-b border-slate-800/70 pb-2">
 
-      <span className="text-slate-500">
+      <span className="shrink-0 text-slate-500">
         {label}
       </span>
 
       <span
-        className={
+        className={`min-w-0 truncate text-right ${
           green
             ? "font-medium text-green-400"
             : "text-slate-200"
-        }
+        }`}
       >
         {green && "● "}
         {value}
@@ -802,6 +559,10 @@ function InfoRow({
     </div>
   );
 }
+
+/* ==============================================================
+   MOTION GRAPH
+============================================================== */
 
 function MotionGraph({
   title,
@@ -812,27 +573,34 @@ function MotionGraph({
   data: MotionPoint[];
   type: "acceleration" | "gyroscope";
 }) {
-  const isAcceleration = type === "acceleration";
+  const isAcceleration =
+    type === "acceleration";
+
+  const latest =
+    data[data.length - 1];
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-[#071016] p-4">
+    <div className="min-w-0 rounded-lg border border-slate-800 bg-[#071016] p-4">
 
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      {/* HEADER */}
 
-        <div>
-          <h2 className="text-sm font-semibold text-white">
+      <div className="mb-4 flex items-center justify-between gap-4">
+
+        <div className="min-w-0">
+
+          <h2 className="truncate text-sm font-semibold text-white">
             {title}
           </h2>
 
           <p className="mt-1 text-[10px] text-slate-500">
             Real-time sensor data
           </p>
+
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
 
-          <span className="flex items-center gap-1 text-[9px] text-green-400">
+          <span className="flex items-center gap-1 text-[9px] font-semibold text-green-400">
             <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
             LIVE
           </span>
@@ -844,7 +612,8 @@ function MotionGraph({
         </div>
       </div>
 
-      {/* Graph */}
+      {/* GRAPH */}
+
       <div className="h-[260px] w-full">
 
         {data.length < 2 ? (
@@ -925,9 +694,7 @@ function MotionGraph({
                     stroke="#ef4444"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                   />
 
@@ -938,9 +705,7 @@ function MotionGraph({
                     stroke="#22c55e"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                   />
 
@@ -951,9 +716,7 @@ function MotionGraph({
                     stroke="#3b82f6"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                   />
                 </>
@@ -966,9 +729,7 @@ function MotionGraph({
                     stroke="#ef4444"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                   />
 
@@ -979,9 +740,7 @@ function MotionGraph({
                     stroke="#22c55e"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                   />
 
@@ -992,9 +751,7 @@ function MotionGraph({
                     stroke="#3b82f6"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 4,
-                    }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                   />
                 </>
@@ -1006,50 +763,54 @@ function MotionGraph({
 
       </div>
 
-      {/* Current values */}
+      {/* CURRENT VALUES */}
+
       <div className="mt-4 grid grid-cols-3 gap-2">
 
         {isAcceleration ? (
           <>
             <CurrentValue
               label="X"
-              value={data[data.length - 1]?.accel_x}
+              value={latest?.accel_x}
             />
 
             <CurrentValue
               label="Y"
-              value={data[data.length - 1]?.accel_y}
+              value={latest?.accel_y}
             />
 
             <CurrentValue
               label="Z"
-              value={data[data.length - 1]?.accel_z}
+              value={latest?.accel_z}
             />
           </>
         ) : (
           <>
             <CurrentValue
               label="X"
-              value={data[data.length - 1]?.gyro_x}
+              value={latest?.gyro_x}
             />
 
             <CurrentValue
               label="Y"
-              value={data[data.length - 1]?.gyro_y}
+              value={latest?.gyro_y}
             />
 
             <CurrentValue
               label="Z"
-              value={data[data.length - 1]?.gyro_z}
+              value={latest?.gyro_z}
             />
           </>
         )}
 
       </div>
-
     </div>
   );
 }
+
+/* ==============================================================
+   CURRENT VALUE
+============================================================== */
 
 function CurrentValue({
   label,
@@ -1075,29 +836,38 @@ function CurrentValue({
   );
 }
 
-/* ---------------- MINE MAP ---------------- */
+/* ==============================================================
+   MINE MAP
+============================================================== */
 
 function MineMap() {
   return (
-    <div className="relative min-h-[500px] overflow-hidden rounded-lg border border-slate-800 bg-black">
+    <div className="relative min-h-[420px] overflow-hidden rounded-lg border border-slate-800 bg-black sm:min-h-[500px] xl:min-h-[620px]">
 
       {/* IMAGE */}
+
       <Image
         src={MINE_MAP_IMAGE}
         alt="3D Mine Tunnel Network"
         fill
         priority
         className="object-contain"
-        sizes="(max-width: 1280px) 100vw, 75vw"
+        sizes="(max-width: 1280px) 100vw, calc(100vw - 360px)"
       />
 
-      {/* TOP TITLE */}
-      <div className="absolute left-4 top-3 z-10 rounded-md border border-slate-700 bg-black/70 px-3 py-2 text-sm font-semibold backdrop-blur">
+      {/* SUBTLE OVERLAY */}
+
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10" />
+
+      {/* TITLE */}
+
+      <div className="absolute left-3 top-3 z-10 rounded-md border border-slate-700 bg-black/75 px-3 py-2 text-xs font-semibold backdrop-blur sm:left-4 sm:top-4 sm:text-sm">
         3D Mine Map – Real Time View
       </div>
 
       {/* LEGEND */}
-      <div className="absolute right-4 top-3 z-10 flex gap-3 rounded-md border border-slate-700 bg-black/75 px-3 py-2 text-[9px] backdrop-blur">
+
+      <div className="absolute right-3 top-3 z-10 hidden flex-wrap justify-end gap-2 rounded-md border border-slate-700 bg-black/75 px-3 py-2 text-[9px] backdrop-blur sm:flex sm:right-4 sm:top-4">
 
         <span className="text-green-400">
           ● Online
@@ -1117,8 +887,23 @@ function MineMap() {
 
       </div>
 
-      {/* 3D BUTTON */}
-      <div className="absolute bottom-4 left-4 z-10 rounded-md border border-slate-700 bg-black/80 px-3 py-2 text-xs">
+      {/* MOBILE LEGEND */}
+
+      <div className="absolute bottom-3 right-3 z-10 flex gap-2 rounded-md border border-slate-700 bg-black/75 px-2 py-1.5 text-[8px] backdrop-blur sm:hidden">
+
+        <span className="text-green-400">
+          ● Online
+        </span>
+
+        <span className="text-red-400">
+          ● Alert
+        </span>
+
+      </div>
+
+      {/* 3D INDICATOR */}
+
+      <div className="absolute bottom-4 left-4 z-10 rounded-md border border-slate-700 bg-black/80 px-3 py-2 text-xs font-semibold">
         3D
       </div>
 
@@ -1126,15 +911,22 @@ function MineMap() {
   );
 }
 
+/* ==============================================================
+   FORMAT UPTIME
+============================================================== */
+
 function formatUptime(seconds: number | null) {
   if (seconds === null) return "--";
 
   const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
+
+  const m = Math.floor(
+    (seconds % 3600) / 60
+  );
+
   const s = seconds % 60;
 
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(
-    2,
-    "0"
-  )}:${String(s).padStart(2, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(
+    m
+  ).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }

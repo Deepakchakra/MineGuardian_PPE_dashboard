@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   AlertTriangle,
-  Cloud,
   Gauge,
   HardHat,
   History,
@@ -70,7 +69,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-50 flex h-screen w-[190px] flex-col border-r border-slate-800 bg-[#050b10] text-white">
+    <aside className="sticky top-0 flex h-screen w-[190px] shrink-0 flex-col border-r border-slate-800 bg-[#050b10] text-white">
 
       {/* Logo */}
       <div className="flex h-[58px] shrink-0 items-center gap-2 border-b border-slate-800 px-3">
@@ -125,8 +124,9 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Helmet status */}
+      {/* Helmet Status */}
       <div className="m-2 rounded-lg border border-slate-800 bg-[#081118] p-3">
+
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold">
             HELMET-01
@@ -143,11 +143,11 @@ export default function Sidebar() {
         </div>
 
         <div className="space-y-3 text-[9px]">
+
           <div>
             <p className="text-slate-500">
               Signal Strength
             </p>
-
             <p className="mt-1 font-semibold text-white">
               -63 dBm
             </p>
@@ -157,7 +157,6 @@ export default function Sidebar() {
             <p className="text-slate-500">
               Uptime
             </p>
-
             <p className="mt-1 font-semibold text-white">
               00:01:33
             </p>
@@ -167,7 +166,6 @@ export default function Sidebar() {
             <p className="text-slate-500">
               Worker ID
             </p>
-
             <p className="mt-1 font-semibold text-white">
               WORKER-07
             </p>
@@ -177,13 +175,14 @@ export default function Sidebar() {
             <p className="text-slate-500">
               Location
             </p>
-
             <p className="mt-1 font-semibold text-white">
               Checkpoint 3
             </p>
           </div>
+
         </div>
       </div>
+
     </aside>
   );
 }

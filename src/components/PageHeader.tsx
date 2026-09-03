@@ -3,30 +3,16 @@
 import {
   Bell,
   ChevronDown,
-  ShieldAlert,
 } from "lucide-react";
 
 export default function PageHeader() {
   return (
-    <header className="flex h-[58px] items-center justify-between border-b border-slate-800 bg-[#050b10] px-5">
+    <header className="flex h-[58px] items-center justify-end border-b border-slate-800 bg-[#050b10] px-5">
 
-      <div className="flex items-center gap-3">
-        <ShieldAlert className="h-5 w-5 text-red-500" />
-
-        <div>
-          <h2 className="text-sm font-semibold text-white">
-            MineGuardian
-          </h2>
-
-          <p className="text-[9px] text-slate-500">
-            Mining Safety Control Room
-          </p>
-        </div>
-      </div>
-
+      {/* RIGHT SIDE */}
       <div className="flex items-center gap-5">
 
-        {/* System status */}
+        {/* System Status */}
         <div className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2">
           <span className="text-[10px] font-semibold text-red-400">
             ⚠ SYSTEM MONITORING
@@ -49,7 +35,7 @@ export default function PageHeader() {
           </div>
 
           <div>
-            <p className="text-[10px] font-semibold">
+            <p className="text-[10px] font-semibold text-white">
               Operator
             </p>
 

@@ -8,21 +8,23 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-[#02070b] text-white">
+      <div className="flex min-h-screen">
 
-      {/* ONE SIDEBAR ONLY */}
-      <Sidebar />
+        {/* SINGLE SIDEBAR */}
+        <Sidebar />
 
-      {/* Main area */}
-      <div className="ml-[190px] min-h-screen">
+        {/* MAIN AREA */}
+        <div className="min-w-0 flex-1">
 
-        {/* Header */}
-        <PageHeader />
+          {/* SINGLE HEADER */}
+          <PageHeader />
 
-        {/* Page content */}
-        <main className="p-4">
-          {children}
-        </main>
+          {/* PAGE CONTENT */}
+          <main className="p-5">
+            {children}
+          </main>
 
+        </div>
       </div>
     </div>
   );
