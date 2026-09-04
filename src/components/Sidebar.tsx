@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAllHelmetData } from "@/hooks/useHelmetData";
-import { AlertTriangle, Camera, HardHat, Home, ShieldCheck, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Camera, ClipboardList, Home, ShieldCheck, ShieldAlert } from "lucide-react";
 
 const navigation = [
   { label: "Home", href: "/", icon: Home },
   { label: "AI PPE Detection", href: "/ai-ppe-detection", icon: Camera },
   { label: "Alerts", href: "/alerts", icon: AlertTriangle },
+  { label: "History Logs", href: "/history-logs", icon: ClipboardList },
 ];
 
 export default function Sidebar() {

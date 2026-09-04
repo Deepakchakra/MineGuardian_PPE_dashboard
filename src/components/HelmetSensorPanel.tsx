@@ -84,7 +84,7 @@ function ScalarChart({
   title: string;
   unit: string;
   current: number | null;
-  data: { time: string; value: number | null }[];
+  data: { timestamp: number; value: number | null }[];
   stroke: string;
   yDomain?: [number, number];
   referenceLines?: { value: number; stroke: string; label: string }[];
@@ -115,21 +115,26 @@ function ScalarChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 8, right: 8, left: 2, bottom: 18 }}>
               <CartesianGrid stroke="#16232d" strokeDasharray="3 3" vertical={false} />
               <XAxis
-                dataKey="time"
-                tick={{ fill: "#475569", fontSize: 8 }}
-                axisLine={false}
+                dataKey="timestamp"
+                type="number"
+                scale="time"
+                domain={["dataMin", "dataMax"]}
+                tick={{ fill: "#64748b", fontSize: 8 }}
+                axisLine={{ stroke: "#24333e" }}
                 tickLine={false}
-                minTickGap={22}
+                minTickGap={30}
+                interval="preserveStartEnd"
+                tickFormatter={(timestamp) => new Date(Number(timestamp)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               />
               <YAxis
                 domain={yDomain ?? ["auto", "auto"]}
                 tick={{ fill: "#475569", fontSize: 8 }}
                 axisLine={false}
                 tickLine={false}
-                width={42}
+                width={50}
                 tickFormatter={(v) => `${v}`}
               />
               <Tooltip
@@ -140,6 +145,7 @@ function ScalarChart({
                   fontSize: 10,
                 }}
                 labelStyle={{ color: "#94a3b8" }}
+                labelFormatter={(timestamp) => new Date(Number(timestamp)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 formatter={(v) => [
                   v === null || v === undefined ? "N/A" : `${v}${unit}`,
                   title,
@@ -149,7 +155,7 @@ function ScalarChart({
                 <ReferenceLine key={`${title}-${line.value}`} y={line.value} stroke={line.stroke} strokeWidth={1.2} strokeDasharray="4 4" label={{ value: line.label, position: "insideTopRight", fill: line.stroke, fontSize: 8 }} />
               ))}
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="value"
                 connectNulls
                 stroke={stroke}
@@ -172,7 +178,7 @@ function AxisChart({
   values,
 }: {
   title: string;
-  data: { time: string; x: number | null; y: number | null; z: number | null }[];
+  data: { timestamp: number; x: number | null; y: number | null; z: number | null }[];
   values: [number | null, number | null, number | null];
 }) {
   const hasData = data.some(
@@ -202,14 +208,19 @@ function AxisChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 8, right: 8, left: 2, bottom: 18 }}>
               <CartesianGrid stroke="#16232d" strokeDasharray="3 3" vertical={false} />
               <XAxis
-                dataKey="time"
-                tick={{ fill: "#475569", fontSize: 8 }}
-                axisLine={false}
+                dataKey="timestamp"
+                type="number"
+                scale="time"
+                domain={["dataMin", "dataMax"]}
+                tick={{ fill: "#64748b", fontSize: 8 }}
+                axisLine={{ stroke: "#24333e" }}
                 tickLine={false}
-                minTickGap={22}
+                minTickGap={30}
+                interval="preserveStartEnd"
+                tickFormatter={(timestamp) => new Date(Number(timestamp)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               />
               <YAxis
                 domain={title.toLowerCase().startsWith("accelerometer") ? [-20, 20] : [-30, 30]}
@@ -217,7 +228,7 @@ function AxisChart({
                 tick={{ fill: "#475569", fontSize: 8 }}
                 axisLine={false}
                 tickLine={false}
-                width={46}
+                width={50}
               />
               <Tooltip
                 contentStyle={{
@@ -227,13 +238,14 @@ function AxisChart({
                   fontSize: 10,
                 }}
                 labelStyle={{ color: "#94a3b8" }}
+                labelFormatter={(timestamp) => new Date(Number(timestamp)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 formatter={(v, name) => [
                   v === null || v === undefined ? "N/A" : Number(v).toFixed(3),
                   String(name).toUpperCase(),
                 ]}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="x"
                 name="X"
                 connectNulls
@@ -244,7 +256,7 @@ function AxisChart({
                 isAnimationActive={false}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="y"
                 name="Y"
                 connectNulls
@@ -255,7 +267,7 @@ function AxisChart({
                 isAnimationActive={false}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="z"
                 name="Z"
                 connectNulls
@@ -275,7 +287,7 @@ function AxisChart({
 
 export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | null }) {
   const [history, setHistory] = useState<
-    { time: string; temperature: number | null; mq2: number | null; mq7: number | null; accelX: number | null; accelY: number | null; accelZ: number | null; gyroX: number | null; gyroY: number | null; gyroZ: number | null }[]
+    { timestamp: number; temperature: number | null; mq2: number | null; mq7: number | null; accelX: number | null; accelY: number | null; accelZ: number | null; gyroX: number | null; gyroY: number | null; gyroZ: number | null }[]
   >([]);
 
   useEffect(() => {
@@ -284,47 +296,52 @@ export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | nul
       return;
     }
 
-    const now = new Date();
-    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const timestamp = Date.now();
 
     setHistory((previous) => {
-      const next = [
-        ...previous,
-        {
-          time,
-          temperature: helmet.temperature,
-          mq2: helmet.mq2.raw,
-          mq7: helmet.mq7.raw,
-          accelX: helmet.mpu6050.accel_x,
-          accelY: helmet.mpu6050.accel_y,
-          accelZ: helmet.mpu6050.accel_z,
-          gyroX: helmet.mpu6050.gyro_x,
-          gyroY: helmet.mpu6050.gyro_y,
-          gyroZ: helmet.mpu6050.gyro_z,
-        },
-      ];
-      return next.slice(-40);
+      const sample = {
+        timestamp,
+        temperature: helmet.temperature,
+        mq2: helmet.mq2.raw,
+        mq7: helmet.mq7.raw,
+        accelX: helmet.mpu6050.accel_x,
+        accelY: helmet.mpu6050.accel_y,
+        accelZ: helmet.mpu6050.accel_z,
+        gyroX: helmet.mpu6050.gyro_x,
+        gyroY: helmet.mpu6050.gyro_y,
+        gyroZ: helmet.mpu6050.gyro_z,
+      };
+
+      // Firebase can update the complete helmet object several times
+      // per second. Keep one chart sample per ~900 ms so duplicate
+      // timestamps do not create artificial vertical jumps.
+      const last = previous[previous.length - 1];
+      if (last && timestamp - last.timestamp < 900) {
+        return [...previous.slice(0, -1), sample];
+      }
+
+      return [...previous, sample].slice(-40);
     });
   }, [helmet]);
 
   const temperatureHistory = useMemo(
-    () => history.map((point) => ({ time: point.time, value: point.temperature })),
+    () => history.map((point) => ({ timestamp: point.timestamp, value: point.temperature })),
     [history],
   );
   const mq2History = useMemo(
-    () => history.map((point) => ({ time: point.time, value: point.mq2 })),
+    () => history.map((point) => ({ timestamp: point.timestamp, value: point.mq2 })),
     [history],
   );
   const mq7History = useMemo(
-    () => history.map((point) => ({ time: point.time, value: point.mq7 })),
+    () => history.map((point) => ({ timestamp: point.timestamp, value: point.mq7 })),
     [history],
   );
   const accelerometerHistory = useMemo(
-    () => history.map((point) => ({ time: point.time, x: point.accelX, y: point.accelY, z: point.accelZ })),
+    () => history.map((point) => ({ timestamp: point.timestamp, x: point.accelX, y: point.accelY, z: point.accelZ })),
     [history],
   );
   const gyroscopeHistory = useMemo(
-    () => history.map((point) => ({ time: point.time, x: point.gyroX, y: point.gyroY, z: point.gyroZ })),
+    () => history.map((point) => ({ timestamp: point.timestamp, x: point.gyroX, y: point.gyroY, z: point.gyroZ })),
     [history],
   );
 
@@ -362,8 +379,8 @@ export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | nul
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <ScalarChart title="Temperature" unit=" °C" current={helmet.temperature} data={temperatureHistory} stroke="#f59e0b" />
-        <ScalarChart title="Methane" unit=" PPM" current={helmet.mq2.raw} data={mq2History} stroke="#ef4444" yDomain={[0, 1500]} referenceLines={[{ value: 150, stroke: "#4ade80", label: "150 PPM" }, { value: 200, stroke: "#facc15", label: "200 PPM" }, { value: 1000, stroke: "#ef4444", label: "1000 PPM" }]} />
-        <ScalarChart title="Carbon Monoxide" unit=" PPM" current={helmet.mq7.raw} data={mq7History} stroke="#38bdf8" yDomain={[0, 800]} referenceLines={[{ value: 80, stroke: "#4ade80", label: "80 PPM" }, { value: 100, stroke: "#facc15", label: "100 PPM" }, { value: 500, stroke: "#ef4444", label: "500 PPM" }]} />
+        <ScalarChart title="Methane" unit=" PPM" current={helmet.mq2.raw} data={mq2History} stroke="#ef4444" yDomain={[0, 1100]} referenceLines={[{ value: 150, stroke: "#4ade80", label: "150 PPM" }, { value: 200, stroke: "#facc15", label: "200 PPM" }, { value: 1000, stroke: "#ef4444", label: "1000 PPM" }]} />
+        <ScalarChart title="Carbon Monoxide" unit=" PPM" current={helmet.mq7.raw} data={mq7History} stroke="#38bdf8" yDomain={[0, 600]} referenceLines={[{ value: 80, stroke: "#4ade80", label: "80 PPM" }, { value: 100, stroke: "#facc15", label: "100 PPM" }, { value: 500, stroke: "#ef4444", label: "500 PPM" }]} />
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
