@@ -37,12 +37,16 @@ function createDemoHelmet(helmetId: string): HelmetData {
 export default function HelmetList({
   helmets,
   onAlert,
-  neverActive,
+  neverCommands,
+  stopLoading,
+  stopErrors,
   onStopNever,
 }: {
   helmets: HelmetData[];
   onAlert: (helmet: HelmetData) => void;
-  neverActive: Record<string, boolean>;
+  neverCommands: Record<string, { commandId: string; status: string }>;
+  stopLoading: Record<string, boolean>;
+  stopErrors: Record<string, string | null>;
   onStopNever: (helmet: HelmetData) => void | Promise<void>;
 }) {
   const router = useRouter();
@@ -105,17 +109,28 @@ export default function HelmetList({
                 >
                   ALERT
                 </button>
-                {neverActive[h.helmetId] && (
+                {neverCommands[h.helmetId]?.status === "ACTIVE" && (
                   <button
                     type="button"
+                    disabled={stopLoading[h.helmetId]}
                     onClick={(e) => {
                       e.stopPropagation();
                       void onStopNever(h);
                     }}
                     className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[9px] font-semibold text-amber-300 hover:bg-amber-500/20"
                   >
-                    STOP ALERT
+                    {stopLoading[h.helmetId] ? "STOPPING…" : "STOP ALERT"}
                   </button>
+                )}
+                {neverCommands[h.helmetId]?.status && (
+                  <span className={`text-[8px] font-semibold ${neverCommands[h.helmetId].status === "ACTIVE" ? "text-emerald-400" : "text-slate-500"}`}>
+                    NEVER: {neverCommands[h.helmetId].status}
+                  </span>
+                )}
+                {stopErrors[h.helmetId] && (
+                  <span className="max-w-[120px] text-right text-[8px] text-red-400">
+                    {stopErrors[h.helmetId]}
+                  </span>
                 )}
               </div>
             </div>

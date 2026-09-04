@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Radio } from "lucide-react";
+import { ArrowLeft, Bell, Radio } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { useHelmetData } from "@/hooks/useHelmetData";
 import MineMap from "@/components/MineMap";
 import HelmetSensorPanel from "@/components/HelmetSensorPanel";
+import AlertDialog from "@/components/AlertDialog";
 
 export default function HelmetDetailsPage() {
   const params = useParams<{ helmetId: string }>();
   const helmetId = decodeURIComponent(params.helmetId || "helmet_01");
   const { data, loading, error } = useHelmetData(helmetId);
+  const [showAlert, setShowAlert] = useState(false);
 
   const displayId = helmetId.replace("_", "-").toUpperCase();
   const isActive = data.wifi_rssi !== null || data.uptime !== null || data.temperature !== null;
@@ -29,10 +32,16 @@ export default function HelmetDetailsPage() {
             </div>
             <p className="mt-1 text-[10px] text-slate-500">Dedicated location and live sensor view</p>
           </div>
-          <Link href="/" className="flex items-center gap-2 rounded-md border border-slate-700 bg-[#071118] px-3 py-2 text-[10px] font-medium text-slate-300 hover:border-slate-500 hover:text-white">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Home
-          </Link>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowAlert(true)} className="flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-[10px] font-semibold text-red-300 hover:bg-red-500/20">
+              <Bell className="h-3.5 w-3.5" />
+              ALERT
+            </button>
+            <Link href="/" className="flex items-center gap-2 rounded-md border border-slate-700 bg-[#071118] px-3 py-2 text-[10px] font-medium text-slate-300 hover:border-slate-500 hover:text-white">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Home
+            </Link>
+          </div>
         </div>
 
         {loading ? (
@@ -62,6 +71,9 @@ export default function HelmetDetailsPage() {
           </>
         )}
       </div>
+      {showAlert && !loading && !error && (
+        <AlertDialog helmet={data} onClose={() => setShowAlert(false)} />
+      )}
     </div>
   );
 }
