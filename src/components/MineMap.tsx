@@ -52,6 +52,51 @@ const CHECKPOINTS: Checkpoint[] = [
 ];
 
 /* ============================================================
+   HELMET MARKER COLORS
+   ============================================================ */
+
+const HELMET_MARKER_COLORS = [
+  {
+    color: "#ef4444",
+    glow: "rgba(239,68,68,0.85)",
+  },
+  {
+    color: "#22d3ee",
+    glow: "rgba(34,211,238,0.85)",
+  },
+  {
+    color: "#a78bfa",
+    glow: "rgba(167,139,250,0.85)",
+  },
+  {
+    color: "#f59e0b",
+    glow: "rgba(245,158,11,0.85)",
+  },
+  {
+    color: "#34d399",
+    glow: "rgba(52,211,153,0.85)",
+  },
+  {
+    color: "#f472b6",
+    glow: "rgba(244,114,182,0.85)",
+  },
+  {
+    color: "#60a5fa",
+    glow: "rgba(96,165,250,0.85)",
+  },
+  {
+    color: "#fb923c",
+    glow: "rgba(251,146,60,0.85)",
+  },
+] as const;
+
+function getHelmetMarkerColor(helmetId: string) {
+  const match = helmetId.match(/\d+/);
+  const number = match ? Number(match[0]) : 1;
+  return HELMET_MARKER_COLORS[(Math.max(1, number) - 1) % HELMET_MARKER_COLORS.length];
+}
+
+/* ============================================================
    CHECKPOINT MARKER
    ============================================================ */
 
@@ -190,10 +235,12 @@ function CheckpointMarker({
 
 function WorkerMarker({
   helmet,
+  helmets,
   selected,
   onSelect,
 }: {
   helmet: HelmetData;
+  helmets: HelmetData[];
   selected: boolean;
   onSelect: (id: string) => void;
 }) {
@@ -221,10 +268,59 @@ function WorkerMarker({
     CHECKPOINTS[currentIndex + 1] ?? null;
 
   /*
-   * Worker is estimated at the midpoint between
-   * the last RFID checkpoint and the next checkpoint.
+   * Base position = midpoint between the last RFID checkpoint and
+   * the next checkpoint. When multiple helmets are on the same
+   * checkpoint-to-checkpoint segment, do NOT place them at exactly
+   * the same coordinates. Instead, spread them into parallel lanes
+   * beside the route using a stable offset derived from helmet ID.
    */
-  const position: [number, number, number] = next
+  const segmentKey = `${current.id}-${next?.id ?? current.id}`;
+
+  const helmetsOnSameSegment = helmets
+    .filter((item) => {
+      const itemWhere = item.checkpoint?.where?.trim().toUpperCase() ?? "";
+      const itemNumber = itemWhere.match(/\d+/)?.[0];
+
+      if (!itemNumber) return false;
+
+      const itemIndex = Number(itemNumber) - 1;
+      if (itemIndex < 0 || itemIndex >= CHECKPOINTS.length) return false;
+
+      const itemNext = CHECKPOINTS[itemIndex + 1] ?? null;
+      const itemSegmentKey = `${CHECKPOINTS[itemIndex].id}-${itemNext?.id ?? CHECKPOINTS[itemIndex].id}`;
+
+      return itemSegmentKey === segmentKey;
+    })
+    .sort((a, b) => {
+      const aNumber = Number(a.helmetId.match(/\d+/)?.[0] ?? 0);
+      const bNumber = Number(b.helmetId.match(/\d+/)?.[0] ?? 0);
+
+      if (aNumber !== bNumber) return aNumber - bNumber;
+      return a.helmetId.localeCompare(b.helmetId);
+    });
+
+  const laneIndex = Math.max(
+    0,
+    helmetsOnSameSegment.findIndex(
+      (item) => item.helmetId === helmet.helmetId,
+    ),
+  );
+
+  /*
+   * Center the helmets around the route:
+   *   1 helmet  -> 0
+   *   2 helmets -> -0.7, +0.7
+   *   3 helmets -> -1.4, 0, +1.4
+   *   4 helmets -> -2.1, -0.7, +0.7, +2.1
+   *
+   * This keeps helmets close to their real route while preventing
+   * markers from visually overwriting each other.
+   */
+  const laneSpacing = 1.4;
+  const centeredLane = laneIndex - (helmetsOnSameSegment.length - 1) / 2;
+  const lateralOffset = centeredLane * laneSpacing;
+
+  const basePosition: [number, number, number] = next
     ? [
         (current.position[0] + next.position[0]) / 2,
         (current.position[1] + next.position[1]) / 2 + 0.4,
@@ -235,6 +331,35 @@ function WorkerMarker({
         current.position[1] + 0.4,
         current.position[2],
       ];
+
+  /*
+   * Calculate a perpendicular direction in the X/Z plane so the
+   * offset moves markers beside the mine route rather than along it.
+   */
+  let position: [number, number, number] = basePosition;
+
+  if (next) {
+    const dx = next.position[0] - current.position[0];
+    const dz = next.position[2] - current.position[2];
+    const length = Math.hypot(dx, dz);
+
+    if (length > 0.001) {
+      const perpendicularX = -dz / length;
+      const perpendicularZ = dx / length;
+
+      position = [
+        basePosition[0] + perpendicularX * lateralOffset,
+        basePosition[1],
+        basePosition[2] + perpendicularZ * lateralOffset,
+      ];
+    }
+  }
+
+  /*
+   * Keep HELMET-01 red, while every additional RFID helmet receives
+   * its own stable color based on its helmet number.
+   */
+  const marker = getHelmetMarkerColor(helmet.helmetId);
 
   return (
     <group position={position}>
@@ -248,15 +373,15 @@ function WorkerMarker({
         <sphereGeometry args={[0.25, 20, 20]} />
 
         <meshStandardMaterial
-          color="#ef4444"
-          emissive="#ff0000"
+          color={marker.color}
+          emissive={marker.color}
           emissiveIntensity={selected ? 5 : 3}
         />
       </mesh>
 
       {/* Worker light */}
       <pointLight
-        color="#ff2020"
+        color={marker.color}
         intensity={selected ? 2 : 1}
         distance={4}
         decay={2}
@@ -278,21 +403,12 @@ function WorkerMarker({
         >
           <div className="pointer-events-none flex flex-col items-center">
             <div
-              className={`
-                flex h-8 w-8
-                items-center justify-center
-                rounded-full
-                border-2
-                ${
-                  selected
-                    ? "border-white bg-red-500"
-                    : "border-red-200 bg-red-600"
-                }
-                text-[9px]
-                font-bold
-                text-white
-                shadow-[0_0_18px_rgba(255,0,0,0.8)]
-              `}
+              className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-[9px] font-bold text-white"
+              style={{
+                borderColor: selected ? "#ffffff" : marker.color,
+                backgroundColor: marker.color,
+                boxShadow: `0 0 18px ${marker.glow}`,
+              }}
             >
               ●
             </div>
@@ -390,11 +506,12 @@ function MineScene({
             />
           ))}
 
-          {/* Workers */}
+          {/* Workers / RFID helmet positions */}
           {helmets.map((helmet) => (
             <WorkerMarker
               key={helmet.helmetId}
               helmet={helmet}
+              helmets={helmets}
               selected={helmet.helmetId === selectedId}
               onSelect={onSelectHelmet}
             />
