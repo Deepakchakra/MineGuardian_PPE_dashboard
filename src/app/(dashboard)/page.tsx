@@ -1,37 +1,145 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { Activity, Bell, Cloud, Thermometer, Wifi, Wind } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+
+import { useMemo, useState } from "react";
+import { Bell, Camera, HardHat, Radio } from "lucide-react";
 import { push, ref, serverTimestamp, set } from "firebase/database";
 import { database } from "@/lib/firebase/config";
 import { useAllHelmetData, type HelmetData } from "@/hooks/useHelmetData";
 import HelmetList from "@/components/HelmetList";
-import HelmetDetails from "@/components/HelmetDetails";
 import MineMap from "@/components/MineMap";
 
-export default function Home(){
- const {helmets,loading,error,lastUpdated}=useAllHelmetData();
- const [selectedId,setSelectedId]=useState<string|null>(null);
- const [alertHelmet,setAlertHelmet]=useState<HelmetData|null>(null);
- const selected=helmets.find(h=>h.helmetId===selectedId)||helmets[0]||null;
- useEffect(()=>{if(selected&&!selectedId)setSelectedId(selected.helmetId)},[selected,selectedId]);
- const activeAlerts=useMemo(()=>helmets.flatMap(h=>{const a=[] as string[];if(h.temperature!==null&&h.temperature>35)a.push("temperature");if(h.gas_status==="DANGER")a.push("gas");if(h.mpu6050.motion_status&&h.mpu6050.motion_status!=="NORMAL")a.push("motion");return a.map(x=>`${h.helmetId}-${x}`)}),[helmets]);
- return <div className="space-y-5">
-  <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold">Mine Monitoring Control Room</h1><p className="mt-1 text-xs text-slate-500">Real-time helmet telemetry, RFID checkpoint coverage and mine map</p></div><div className="flex items-center gap-3 text-[10px] text-slate-400"><span className="rounded border border-slate-800 bg-[#071118] px-3 py-2">Helmets: {helmets.length}</span><span className="rounded border border-slate-800 bg-[#071118] px-3 py-2">Alerts: {activeAlerts.length}</span><span>{lastUpdated?`Updated ${lastUpdated.toLocaleTimeString()}`:"Waiting for Firebase…"}</span></div></div>
-  <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_330px]">
-   <section><div className="mb-2 flex items-center justify-between"><h2 className="text-sm font-semibold">Helmet Fleet</h2><span className="text-[9px] text-slate-500">LIVE</span></div><HelmetList helmets={helmets} selectedId={selected?.helmetId||null} onSelect={setSelectedId} onAlert={setAlertHelmet}/></section>
-   <section className="space-y-5"><MineMap helmets={helmets} selectedId={selected?.helmetId||null} onSelectHelmet={setSelectedId}/><HelmetDetails helmet={selected} onAlert={setAlertHelmet}/></section>
-   <section className="space-y-5"><SensorOverview helmet={selected}/><MotionCharts helmet={selected}/></section>
-  </div>
-  {error&&<div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">Firebase: {error}</div>}
-  {loading&&<div className="text-xs text-slate-500">Loading live helmet data…</div>}
-  {alertHelmet&&<AlertDialog helmet={alertHelmet} onClose={()=>setAlertHelmet(null)}/>} 
- </div>
+export default function Home() {
+  const { helmets } = useAllHelmetData();
+  const [alertHelmet, setAlertHelmet] = useState<HelmetData | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selected = useMemo(
+    () => helmets.find((helmet) => helmet.helmetId === selectedId) ?? null,
+    [helmets, selectedId],
+  );
+
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="grid h-full min-h-0 flex-1 gap-4 overflow-hidden xl:grid-cols-[270px_minmax(0,1fr)]">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#050b10] p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <HardHat className="h-4 w-4 text-slate-400" />
+                <h2 className="text-sm font-semibold">Helmet Lists</h2>
+              </div>
+              <p className="mt-1 text-[9px] text-slate-600">Live helmets detected in Firebase</p>
+            </div>
+            <span className="rounded border border-slate-800 px-2 py-1 text-[9px] text-slate-500">{helmets.length}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <HelmetList
+              helmets={helmets}
+              selectedId={selected?.helmetId ?? null}
+              onSelect={setSelectedId}
+              onAlert={setAlertHelmet}
+            />
+          </div>
+        </section>
+
+        <section className="grid min-h-0 grid-cols-2 gap-3 overflow-hidden">
+          <div className="flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#050b10]">
+            <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 px-4 py-3">
+              <Camera className="h-4 w-4 text-slate-400" />
+              <div>
+                <h2 className="text-sm font-semibold">AI PPE Detection Camera</h2>
+                <p className="text-[9px] text-slate-600">Entry gate surveillance</p>
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 items-center justify-center bg-[#03080c]">
+              <div className="text-center">
+                <Camera className="mx-auto h-8 w-8 text-slate-700" />
+                <p className="mt-2 text-xs text-slate-600">Camera feed will be connected here</p>
+                <p className="mt-1 text-[9px] text-slate-700">No camera source configured</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex min-h-0 h-full flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#050b10]">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Radio className="h-4 w-4 text-slate-400" />
+                <h2 className="text-sm font-semibold">Mine Map</h2>
+              </div>
+              <div className="flex items-center gap-3 text-[9px] text-slate-500">
+                <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-blue-500" />Checkpoint</span>
+                <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />Worker coverage</span>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1">
+              <MineMap
+                helmets={helmets}
+                selectedId={selected?.helmetId ?? null}
+                onSelectHelmet={setSelectedId}
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {alertHelmet && <AlertDialog helmet={alertHelmet} onClose={() => setAlertHelmet(null)} />}
+    </div>
+  );
 }
 
-function SensorOverview({helmet}:{helmet:HelmetData|null}){const cards=[{label:"Temperature",value:helmet?.temperature!==null&&helmet?.temperature!==undefined?`${helmet.temperature} °C`:"N/A",icon:Thermometer},{label:"Humidity",value:helmet?.humidity!==null&&helmet?.humidity!==undefined?`${helmet.humidity} %`:"N/A",icon:Cloud},{label:"MQ-2",value:helmet?.mq2.raw!==null&&helmet?.mq2.raw!==undefined?`${helmet.mq2.raw} · ${helmet.mq2.status||"N/A"}`:"N/A",icon:Wind},{label:"MQ-7",value:helmet?.mq7.raw!==null&&helmet?.mq7.raw!==undefined?`${helmet.mq7.raw} · ${helmet.mq7.status||"N/A"}`:"N/A",icon:Wind},{label:"Wi-Fi",value:helmet?.wifi_rssi!==null&&helmet?.wifi_rssi!==undefined?`${helmet.wifi_rssi} dBm`:"N/A",icon:Wifi},{label:"Motion",value:helmet?.mpu6050.motion_status||"N/A",icon:Activity}];return <div className="rounded-xl border border-slate-800 bg-[#071118] p-4"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">Live Telemetry</h2><Bell className="h-4 w-4 text-slate-500"/></div><div className="grid grid-cols-2 gap-2">{cards.map(c=><div key={c.label} className="rounded-lg border border-slate-800 bg-[#050b10] p-3"><c.icon className="h-3.5 w-3.5 text-slate-500"/><p className="mt-2 text-[9px] text-slate-500">{c.label}</p><p className="mt-1 text-[11px] font-semibold text-white">{c.value}</p></div>)}</div></div>}
+function AlertDialog({ helmet, onClose }: { helmet: HelmetData; onClose: () => void }) {
+  const [duration, setDuration] = useState("10");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
 
-function MotionCharts({helmet}:{helmet:HelmetData|null}){const d=helmet?.mpu6050;const accel=[{axis:"X",value:d?.accel_x},{axis:"Y",value:d?.accel_y},{axis:"Z",value:d?.accel_z}].filter(x=>x.value!==null&&x.value!==undefined);const gyro=[{axis:"X",value:d?.gyro_x},{axis:"Y",value:d?.gyro_y},{axis:"Z",value:d?.gyro_z}].filter(x=>x.value!==null&&x.value!==undefined);return <div className="rounded-xl border border-slate-800 bg-[#071118] p-4"><h2 className="text-sm font-semibold">Motion Snapshot</h2><div className="mt-3 h-40">{accel.length?<ResponsiveContainer width="100%" height="100%"><LineChart data={accel}><CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/><XAxis dataKey="axis" tick={{fontSize:9}}/><YAxis tick={{fontSize:9}}/><Tooltip/><Line type="monotone" dataKey="value" strokeWidth={2} dot/></LineChart></ResponsiveContainer>:<Empty/>}</div><div className="mt-4 h-40">{gyro.length?<ResponsiveContainer width="100%" height="100%"><LineChart data={gyro}><CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/><XAxis dataKey="axis" tick={{fontSize:9}}/><YAxis tick={{fontSize:9}}/><Tooltip/><Legend/><Line type="monotone" dataKey="value" strokeWidth={2} dot/></LineChart></ResponsiveContainer>:<Empty/>}</div></div>}
-function Empty(){return <div className="flex h-full items-center justify-center text-[10px] text-slate-600">No live motion data</div>}
+  async function send() {
+    if (sending) return;
+    setSending(true);
+    setResult(null);
+    try {
+      const commandRef = push(ref(database, "/MineGuardian/commands"));
+      await set(commandRef, {
+        type: "ALERT",
+        helmet_id: helmet.helmetId,
+        worker_id: helmet.workerId ?? null,
+        message: message.trim() || "Emergency alert from control room",
+        duration_seconds: Number(duration),
+        created_at: serverTimestamp(),
+        status: "QUEUED",
+      });
+      setResult("Alert queued successfully.");
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Unable to queue alert.");
+    } finally {
+      setSending(false);
+    }
+  }
 
-function AlertDialog({helmet,onClose}:{helmet:HelmetData;onClose:()=>void}){const[duration,setDuration]=useState("10");const[message,setMessage]=useState("");const[sending,setSending]=useState(false);const[result,setResult]=useState<string|null>(null);async function send(){if(sending)return;setSending(true);setResult(null);try{const commandRef=push(ref(database,"/MineGuardian/commands"));await set(commandRef,{type:"ALERT",helmet_id:helmet.helmetId,worker_id:helmet.workerId??null,message:message.trim()||"Emergency alert from control room",duration_seconds:Number(duration),created_at:serverTimestamp(),status:"QUEUED"});setResult("Alert queued successfully.");}catch(e){setResult(e instanceof Error?e.message:"Unable to queue alert.")}finally{setSending(false)}}return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"><div className="w-full max-w-md rounded-xl border border-slate-700 bg-[#071118] p-5 shadow-2xl"><div className="flex items-center justify-between"><div><p className="text-[10px] text-slate-500">TARGET</p><h2 className="text-lg font-semibold">{helmet.helmetId.replace("_","-").toUpperCase()}</h2><p className="text-[10px] text-slate-500">{helmet.workerName||helmet.workerId||"Worker N/A"}</p></div><button onClick={onClose} className="text-slate-500 hover:text-white">×</button></div><div className="mt-5"><label className="text-[10px] text-slate-500">Duration</label><select value={duration} onChange={e=>setDuration(e.target.value)} className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white"><option value="10">10 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option></select></div><div className="mt-4"><label className="text-[10px] text-slate-500">Message</label><input value={message} onChange={e=>setMessage(e.target.value)} placeholder="Emergency alert…" className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white outline-none focus:border-red-500"/></div>{result&&<p className={`mt-3 text-[10px] ${result.includes("successfully")?"text-emerald-400":"text-red-400"}`}>{result}</p>}<button disabled={sending} onClick={send} className="mt-5 w-full rounded-md bg-red-600 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{sending?"SENDING…":"SEND ALERT"}</button><p className="mt-2 text-[9px] text-slate-600">This writes a QUEUED command to Firebase at /MineGuardian/commands.</p></div></div>}
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md rounded-xl border border-slate-700 bg-[#071118] p-5 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] text-slate-500">TARGET HELMET</p>
+            <h2 className="text-lg font-semibold">{helmet.helmetId.replace("_", "-").toUpperCase()}</h2>
+          </div>
+          <button onClick={onClose} className="text-xl text-slate-500 hover:text-white">×</button>
+        </div>
+        <div className="mt-5">
+          <label className="text-[10px] text-slate-500">Duration</label>
+          <select value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white">
+            <option value="10">10 seconds</option><option value="20">20 seconds</option><option value="30">30 seconds</option>
+          </select>
+        </div>
+        <div className="mt-4">
+          <label className="text-[10px] text-slate-500">Message</label>
+          <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Emergency alert…" className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white outline-none focus:border-red-500" />
+        </div>
+        {result && <p className={`mt-3 text-[10px] ${result.includes("successfully") ? "text-emerald-400" : "text-red-400"}`}>{result}</p>}
+        <button disabled={sending} onClick={send} className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-red-600 py-2.5 text-xs font-semibold text-white disabled:opacity-50"><Bell className="h-3.5 w-3.5" />{sending ? "SENDING…" : "SEND ALERT"}</button>
+      </div>
+    </div>
+  );
+}
