@@ -13,6 +13,7 @@ export default function HelmetDetailsPage() {
   const { data, loading, error } = useHelmetData(helmetId);
 
   const displayId = helmetId.replace("_", "-").toUpperCase();
+  const isActive = data.wifi_rssi !== null || data.uptime !== null || data.temperature !== null;
 
   return (
     <div className="h-full min-h-0 overflow-y-auto pr-1">
@@ -20,7 +21,12 @@ export default function HelmetDetailsPage() {
         <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-[#050b10] px-4 py-3">
           <div>
             <p className="text-[9px] uppercase tracking-[0.2em] text-slate-600">Helmet monitoring</p>
-            <h1 className="mt-1 text-lg font-semibold text-white">{displayId}</h1>
+            <div className="mt-1 flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-white">{displayId}</h1>
+              <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold ${isActive ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                ● {isActive ? "ACTIVE" : "INACTIVE"}
+              </span>
+            </div>
             <p className="mt-1 text-[10px] text-slate-500">Dedicated location and live sensor view</p>
           </div>
           <Link href="/" className="flex items-center gap-2 rounded-md border border-slate-700 bg-[#071118] px-3 py-2 text-[10px] font-medium text-slate-300 hover:border-slate-500 hover:text-white">
@@ -41,7 +47,7 @@ export default function HelmetDetailsPage() {
                   <Radio className="h-4 w-4 text-slate-400" />
                   <div>
                     <h2 className="text-sm font-semibold">Mine Map — {displayId}</h2>
-                    <p className="text-[9px] text-slate-600">Only this helmet's current RFID coverage position is shown</p>
+                    <p className="text-[9px] text-slate-600">{isActive ? "Only this helmet's current RFID coverage position is shown" : "No live RFID position is available for this inactive helmet"}</p>
                   </div>
                 </div>
                 <span className="text-[9px] text-slate-500">Last checkpoint: <span className="text-slate-300">{data.checkpoint.where || "N/A"}</span></span>

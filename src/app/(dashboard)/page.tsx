@@ -5,12 +5,15 @@ import { Bell, Camera, HardHat, Radio } from "lucide-react";
 import { push, ref, serverTimestamp, set } from "firebase/database";
 import { database } from "@/lib/firebase/config";
 import { useAllHelmetData, type HelmetData } from "@/hooks/useHelmetData";
-import HelmetList from "@/components/HelmetList";
+import HelmetList, { DEMO_HELMET_IDS } from "@/components/HelmetList";
 import MineMap from "@/components/MineMap";
 
 export default function Home() {
   const { helmets } = useAllHelmetData();
   const [alertHelmet, setAlertHelmet] = useState<HelmetData | null>(null);
+  const demoHelmetCount = DEMO_HELMET_IDS.filter(
+    (id) => !helmets.some((helmet) => helmet.helmetId.toLowerCase() === id),
+  ).length;
 
   return (
     <div className="h-full min-h-0 overflow-hidden">
@@ -25,7 +28,7 @@ export default function Home() {
               </div>
               <p className="mt-1 text-[9px] text-slate-600">Live helmets detected in Firebase</p>
             </div>
-            <span className="rounded border border-slate-800 px-2 py-1 text-[9px] text-slate-500">{helmets.length}</span>
+            <span className="rounded border border-slate-800 px-2 py-1 text-[9px] text-slate-500">{helmets.length + demoHelmetCount}</span>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">

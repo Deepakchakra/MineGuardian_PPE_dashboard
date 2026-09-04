@@ -5,6 +5,35 @@ import { HardHat, MapPin, Radio } from "lucide-react";
 import type { HelmetData } from "@/hooks/useHelmetData";
 import { findCheckpoint, getWorkerCoveragePosition, CHECKPOINTS } from "@/lib/mineMap/checkpoints";
 
+export const DEMO_HELMET_IDS = ["helmet_02", "helmet_03", "helmet_04", "helmet_05"];
+
+function createDemoHelmet(helmetId: string): HelmetData {
+  return {
+    helmetId,
+    temperature: null,
+    humidity: null,
+    gas_raw: null,
+    gas_status: null,
+    mq2: { raw: null, status: null },
+    mq7: { raw: null, status: null },
+    wifi_rssi: null,
+    uptime: null,
+    battery: null,
+    vibration: null,
+    workerId: null,
+    workerName: null,
+    checkpoint: { where: null, time: null },
+    mpu6050: {
+      accel_x: null, accel_y: null, accel_z: null,
+      gyro_x: null, gyro_y: null, gyro_z: null,
+      temperature: null,
+      acceleration_magnitude: null,
+      rotation_magnitude: null,
+      motion_status: null,
+    },
+  };
+}
+
 export default function HelmetList({
   helmets,
   onAlert,
@@ -14,16 +43,24 @@ export default function HelmetList({
 }) {
   const router = useRouter();
 
-  if (!helmets.length) {
+  const displayHelmets = [
+    ...helmets,
+    ...DEMO_HELMET_IDS
+      .filter((id) => !helmets.some((helmet) => helmet.helmetId.toLowerCase() === id))
+      .map(createDemoHelmet),
+  ];
+
+  if (!displayHelmets.length) {
     return <div className="rounded-xl border border-slate-800 bg-[#071118] p-8 text-center text-xs text-slate-500">No helmet records available in Firebase.</div>;
   }
 
   return (
     <div className="space-y-2">
-      {helmets.map((h) => {
+      {displayHelmets.map((h) => {
         const cp = findCheckpoint(h.checkpoint.where);
         const coverage = cp ? getWorkerCoveragePosition(cp.id, CHECKPOINTS) : null;
         const online = h.wifi_rssi !== null || h.uptime !== null || h.temperature !== null;
+        const isDemoInactive = DEMO_HELMET_IDS.includes(h.helmetId.toLowerCase());
 
         return (
           <div
@@ -48,7 +85,7 @@ export default function HelmetList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold">{h.helmetId.replace("_", "-").toUpperCase()}</span>
-                  <span className={`text-[9px] font-semibold ${online ? "text-emerald-400" : "text-red-400"}`}>● {online ? "ACTIVE" : "OFFLINE"}</span>
+                  <span className={`text-[9px] font-semibold ${online ? "text-emerald-400" : "text-red-400"}`}>● {online ? "ACTIVE" : isDemoInactive ? "INACTIVE" : "OFFLINE"}</span>
                 </div>
                 <p className="mt-1 text-[10px] text-slate-500">{h.workerName || h.workerId || "Worker: N/A"}</p>
               </div>
