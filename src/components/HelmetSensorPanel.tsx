@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -77,12 +78,16 @@ function ScalarChart({
   current,
   data,
   stroke,
+  yDomain,
+  referenceLines,
 }: {
   title: string;
   unit: string;
   current: number | null;
   data: { time: string; value: number | null }[];
   stroke: string;
+  yDomain?: [number, number];
+  referenceLines?: { value: number; stroke: string; label: string }[];
 }) {
   const hasData = data.some((point) => point.value !== null);
 
@@ -120,6 +125,7 @@ function ScalarChart({
                 minTickGap={22}
               />
               <YAxis
+                domain={yDomain ?? ["auto", "auto"]}
                 tick={{ fill: "#475569", fontSize: 8 }}
                 axisLine={false}
                 tickLine={false}
@@ -139,6 +145,9 @@ function ScalarChart({
                   title,
                 ]}
               />
+              {(referenceLines ?? []).map((line) => (
+                <ReferenceLine key={`${title}-${line.value}`} y={line.value} stroke={line.stroke} strokeWidth={1.2} strokeDasharray="4 4" label={{ value: line.label, position: "insideTopRight", fill: line.stroke, fontSize: 8 }} />
+              ))}
               <Line
                 type="monotone"
                 dataKey="value"
@@ -203,6 +212,8 @@ function AxisChart({
                 minTickGap={22}
               />
               <YAxis
+                domain={title.toLowerCase().startsWith("accelerometer") ? [-20, 20] : [-30, 30]}
+                ticks={title.toLowerCase().startsWith("accelerometer") ? [-20, -10, 0, 10, 20] : [-30, -15, 0, 15, 30]}
                 tick={{ fill: "#475569", fontSize: 8 }}
                 axisLine={false}
                 tickLine={false}
@@ -344,15 +355,15 @@ export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | nul
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
         <SensorCard title="Temperature" valueText={value(helmet.temperature, " °C")} icon={<Thermometer className="h-3.5 w-3.5" />} />
         <SensorCard title="Humidity" valueText={value(helmet.humidity, " %")} icon={<Gauge className="h-3.5 w-3.5" />} />
-        <SensorCard title="MQ-2 Gas" valueText={value(helmet.mq2.raw, " PPM")} status={helmet.mq2.status} icon={<span className="text-[9px] font-bold">MQ2</span>} />
-        <SensorCard title="MQ-7 Gas" valueText={value(helmet.mq7.raw, " PPM")} status={helmet.mq7.status} icon={<span className="text-[9px] font-bold">MQ7</span>} />
+        <SensorCard title="Methane" valueText={value(helmet.mq2.raw, " PPM")} status={helmet.mq2.status} icon={<span className="text-[9px] font-bold">CH4</span>} />
+        <SensorCard title="Carbon Monoxide" valueText={value(helmet.mq7.raw, " PPM")} status={helmet.mq7.status} icon={<span className="text-[9px] font-bold">CO</span>} />
         <SensorCard title="Wi-Fi Signal" valueText={value(helmet.wifi_rssi, " dBm")} icon={<Wifi className="h-3.5 w-3.5" />} />
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <ScalarChart title="Temperature" unit=" °C" current={helmet.temperature} data={temperatureHistory} stroke="#f59e0b" />
-        <ScalarChart title="MQ-2 Gas" unit=" PPM" current={helmet.mq2.raw} data={mq2History} stroke="#ef4444" />
-        <ScalarChart title="MQ-7 Gas" unit=" PPM" current={helmet.mq7.raw} data={mq7History} stroke="#38bdf8" />
+        <ScalarChart title="Methane" unit=" PPM" current={helmet.mq2.raw} data={mq2History} stroke="#ef4444" yDomain={[0, 1500]} referenceLines={[{ value: 150, stroke: "#4ade80", label: "150 PPM" }, { value: 200, stroke: "#facc15", label: "200 PPM" }, { value: 1000, stroke: "#ef4444", label: "1000 PPM" }]} />
+        <ScalarChart title="Carbon Monoxide" unit=" PPM" current={helmet.mq7.raw} data={mq7History} stroke="#38bdf8" yDomain={[0, 800]} referenceLines={[{ value: 80, stroke: "#4ade80", label: "80 PPM" }, { value: 100, stroke: "#facc15", label: "100 PPM" }, { value: 500, stroke: "#ef4444", label: "500 PPM" }]} />
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">

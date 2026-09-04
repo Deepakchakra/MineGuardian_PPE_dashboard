@@ -1,16 +1,92 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Camera, HardHat, Radio } from "lucide-react";
-import { push, ref, serverTimestamp, set } from "firebase/database";
+import { useEffect, useState } from "react";
+import { Camera, HardHat, Radio } from "lucide-react";
+import { onValue, ref, update } from "firebase/database";
 import { database } from "@/lib/firebase/config";
 import { useAllHelmetData, type HelmetData } from "@/hooks/useHelmetData";
 import HelmetList, { DEMO_HELMET_IDS } from "@/components/HelmetList";
 import MineMap from "@/components/MineMap";
+import AlertDialog from "@/components/AlertDialog";
 
 export default function Home() {
   const { helmets } = useAllHelmetData();
   const [alertHelmet, setAlertHelmet] = useState<HelmetData | null>(null);
+  const [neverCommands, setNeverCommands] = useState<Record<string, { commandId: string; status: string }>>({});
+  const [stopLoading, setStopLoading] = useState<Record<string, boolean>>({});
+  const [stopErrors, setStopErrors] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    const commandsRef = ref(database, "/MineGuardian/commands");
+    return onValue(commandsRef, (snapshot) => {
+      const value = snapshot.val() ?? {};
+      const commands = Object.entries(value)
+        .map(([commandId, raw]) => ({
+          commandId,
+          ...(raw as Record<string, unknown>),
+        }))
+        .filter(
+          (command) =>
+            command.type === "ALERT" &&
+            command.duration === "NEVER" &&
+            typeof command.helmet_id === "string",
+        )
+        .sort((a, b) => Number(b.created_at ?? 0) - Number(a.created_at ?? 0));
+
+      const next: Record<string, { commandId: string; status: string }> = {};
+      const activeByHelmet = new Set<string>();
+
+      // Prefer the newest ACTIVE NEVER command for each helmet. If there is no
+      // active command, keep the newest NEVER command so ACTIVE -> STOPPED is
+      // reflected immediately in the UI from Firebase itself.
+      for (const command of commands) {
+        const helmetId = String(command.helmet_id);
+        const status = String(command.status ?? "");
+        if (status === "ACTIVE" && !activeByHelmet.has(helmetId)) {
+          next[helmetId] = { commandId: command.commandId, status };
+          activeByHelmet.add(helmetId);
+        }
+      }
+      for (const command of commands) {
+        const helmetId = String(command.helmet_id);
+        if (!next[helmetId]) {
+          next[helmetId] = {
+            commandId: command.commandId,
+            status: String(command.status ?? ""),
+          };
+        }
+      }
+
+      setNeverCommands(next);
+    });
+  }, []);
+
+  async function stopNeverAlert(helmet: HelmetData) {
+    const helmetId = helmet.helmetId;
+    const command = neverCommands[helmetId];
+
+    if (!command || command.status !== "ACTIVE") {
+      setStopErrors((prev) => ({ ...prev, [helmetId]: "No active NEVER alert command was found." }));
+      return;
+    }
+
+    setStopLoading((prev) => ({ ...prev, [helmetId]: true }));
+    setStopErrors((prev) => ({ ...prev, [helmetId]: null }));
+
+    try {
+      await update(ref(database, `/MineGuardian/commands/${command.commandId}`), {
+        status: "STOPPED",
+      });
+      // Do not set local status here. The /commands realtime listener above is
+      // the source of truth and will change ACTIVE -> STOPPED after Firebase
+      // confirms the update.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to stop alert.";
+      setStopErrors((prev) => ({ ...prev, [helmetId]: message }));
+    } finally {
+      setStopLoading((prev) => ({ ...prev, [helmetId]: false }));
+    }
+  }
   const demoHelmetCount = DEMO_HELMET_IDS.filter(
     (id) => !helmets.some((helmet) => helmet.helmetId.toLowerCase() === id),
   ).length;
@@ -32,7 +108,14 @@ export default function Home() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <HelmetList helmets={helmets} onAlert={setAlertHelmet} />
+            <HelmetList
+              helmets={helmets}
+              onAlert={setAlertHelmet}
+              neverCommands={neverCommands}
+              stopLoading={stopLoading}
+              stopErrors={stopErrors}
+              onStopNever={stopNeverAlert}
+            />
           </div>
         </section>
 
@@ -73,67 +156,14 @@ export default function Home() {
         </section>
       </div>
 
-      {alertHelmet && <AlertDialog helmet={alertHelmet} onClose={() => setAlertHelmet(null)} />}
+      {alertHelmet && (
+        <AlertDialog
+          helmet={alertHelmet}
+          onClose={() => setAlertHelmet(null)}
+          onNeverStarted={() => undefined}
+        />
+      )}
     </div>
   );
 }
 
-function AlertDialog({ helmet, onClose }: { helmet: HelmetData; onClose: () => void }) {
-  const [duration, setDuration] = useState("10");
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-
-  async function send() {
-    if (sending) return;
-    setSending(true);
-    setResult(null);
-    try {
-      const commandRef = push(ref(database, "/MineGuardian/commands"));
-      await set(commandRef, {
-        type: "ALERT",
-        helmet_id: helmet.helmetId,
-        worker_id: helmet.workerId ?? null,
-        message: message.trim() || "Emergency alert from control room",
-        duration_seconds: Number(duration),
-        created_at: serverTimestamp(),
-        status: "QUEUED",
-      });
-      setResult("Alert queued successfully.");
-    } catch (e) {
-      setResult(e instanceof Error ? e.message : "Unable to queue alert.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-700 bg-[#071118] p-5 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-slate-500">TARGET HELMET</p>
-            <h2 className="text-lg font-semibold">{helmet.helmetId.replace("_", "-").toUpperCase()}</h2>
-          </div>
-          <button onClick={onClose} className="text-xl text-slate-500 hover:text-white">×</button>
-        </div>
-        <div className="mt-5">
-          <label className="text-[10px] text-slate-500">Duration</label>
-          <select value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white">
-            <option value="10">10 seconds</option>
-            <option value="20">20 seconds</option>
-            <option value="30">30 seconds</option>
-          </select>
-        </div>
-        <div className="mt-4">
-          <label className="text-[10px] text-slate-500">Message</label>
-          <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Emergency alert…" className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white outline-none focus:border-red-500" />
-        </div>
-        {result && <p className={`mt-3 text-[10px] ${result.includes("successfully") ? "text-emerald-400" : "text-red-400"}`}>{result}</p>}
-        <button disabled={sending} onClick={send} className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-red-600 py-2.5 text-xs font-semibold text-white disabled:opacity-50">
-          <Bell className="h-3.5 w-3.5" />{sending ? "SENDING…" : "SEND ALERT"}
-        </button>
-      </div>
-    </div>
-  );
-}

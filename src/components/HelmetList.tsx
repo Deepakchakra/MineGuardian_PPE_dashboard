@@ -37,9 +37,17 @@ function createDemoHelmet(helmetId: string): HelmetData {
 export default function HelmetList({
   helmets,
   onAlert,
+  neverCommands,
+  stopLoading,
+  stopErrors,
+  onStopNever,
 }: {
   helmets: HelmetData[];
   onAlert: (helmet: HelmetData) => void;
+  neverCommands: Record<string, { commandId: string; status: string }>;
+  stopLoading: Record<string, boolean>;
+  stopErrors: Record<string, string | null>;
+  onStopNever: (helmet: HelmetData) => void | Promise<void>;
 }) {
   const router = useRouter();
 
@@ -90,16 +98,41 @@ export default function HelmetList({
                 <p className="mt-1 text-[10px] text-slate-500">{h.workerName || h.workerId || "Worker: N/A"}</p>
               </div>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAlert(h);
-                }}
-                className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] text-red-300 hover:bg-red-500/20"
-              >
-                ALERT
-              </button>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAlert(h);
+                  }}
+                  className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] text-red-300 hover:bg-red-500/20"
+                >
+                  ALERT
+                </button>
+                {neverCommands[h.helmetId]?.status === "ACTIVE" && (
+                  <button
+                    type="button"
+                    disabled={stopLoading[h.helmetId]}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void onStopNever(h);
+                    }}
+                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[9px] font-semibold text-amber-300 hover:bg-amber-500/20"
+                  >
+                    {stopLoading[h.helmetId] ? "STOPPING…" : "STOP ALERT"}
+                  </button>
+                )}
+                {neverCommands[h.helmetId]?.status && (
+                  <span className={`text-[8px] font-semibold ${neverCommands[h.helmetId].status === "ACTIVE" ? "text-emerald-400" : "text-slate-500"}`}>
+                    NEVER: {neverCommands[h.helmetId].status}
+                  </span>
+                )}
+                {stopErrors[h.helmetId] && (
+                  <span className="max-w-[120px] text-right text-[8px] text-red-400">
+                    {stopErrors[h.helmetId]}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
