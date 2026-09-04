@@ -7,9 +7,11 @@ import { database } from "@/lib/firebase/config";
 import { useAllHelmetData, type HelmetData } from "@/hooks/useHelmetData";
 import HelmetList from "@/components/HelmetList";
 import MineMap from "@/components/MineMap";
+import { useSafetyAlertRecorder } from "@/hooks/useSafetyAlertRecorder";
 
 export default function Home() {
   const { helmets } = useAllHelmetData();
+  useSafetyAlertRecorder(helmets);
   const [alertHelmet, setAlertHelmet] = useState<HelmetData | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
