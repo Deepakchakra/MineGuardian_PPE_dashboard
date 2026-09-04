@@ -11,6 +11,7 @@ import MineMap from "@/components/MineMap";
 export default function Home() {
   const { helmets } = useAllHelmetData();
   const [alertHelmet, setAlertHelmet] = useState<HelmetData | null>(null);
+  const [neverActive, setNeverActive] = useState<Record<string, boolean>>({});
   const demoHelmetCount = DEMO_HELMET_IDS.filter(
     (id) => !helmets.some((helmet) => helmet.helmetId.toLowerCase() === id),
   ).length;
@@ -32,7 +33,19 @@ export default function Home() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <HelmetList helmets={helmets} onAlert={setAlertHelmet} />
+            <HelmetList
+              helmets={helmets}
+              onAlert={setAlertHelmet}
+              neverActive={neverActive}
+              onStopNever={async (helmet) => {
+                try {
+                  await set(ref(database, `/MineGuardian/${helmet.helmetId}/dashboard_alert`), false);
+                  setNeverActive((prev) => ({ ...prev, [helmet.helmetId]: false }));
+                } catch (error) {
+                  console.error("Unable to stop alert:", error);
+                }
+              }}
+            />
           </div>
         </section>
 
@@ -73,12 +86,26 @@ export default function Home() {
         </section>
       </div>
 
-      {alertHelmet && <AlertDialog helmet={alertHelmet} onClose={() => setAlertHelmet(null)} />}
+      {alertHelmet && (
+        <AlertDialog
+          helmet={alertHelmet}
+          onClose={() => setAlertHelmet(null)}
+          onNeverStarted={() => setNeverActive((prev) => ({ ...prev, [alertHelmet.helmetId]: true }))}
+        />
+      )}
     </div>
   );
 }
 
-function AlertDialog({ helmet, onClose }: { helmet: HelmetData; onClose: () => void }) {
+function AlertDialog({
+  helmet,
+  onClose,
+  onNeverStarted,
+}: {
+  helmet: HelmetData;
+  onClose: () => void;
+  onNeverStarted: () => void;
+}) {
   const [duration, setDuration] = useState("10");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -88,20 +115,44 @@ function AlertDialog({ helmet, onClose }: { helmet: HelmetData; onClose: () => v
     if (sending) return;
     setSending(true);
     setResult(null);
+
+    const isNever = duration === "never";
+    const durationSeconds = isNever ? null : Number(duration);
+    const alertPath = `/MineGuardian/${helmet.helmetId}/dashboard_alert`;
+
     try {
+      // This is the live control path used by the ESP32 smart helmet.
+      await set(ref(database, alertPath), true);
+
+      // Keep an auditable command record as well.
       const commandRef = push(ref(database, "/MineGuardian/commands"));
       await set(commandRef, {
         type: "ALERT",
         helmet_id: helmet.helmetId,
         worker_id: helmet.workerId ?? null,
         message: message.trim() || "Emergency alert from control room",
-        duration_seconds: Number(duration),
+        duration_seconds: durationSeconds,
+        duration: isNever ? "NEVER" : `${durationSeconds} seconds`,
         created_at: serverTimestamp(),
-        status: "QUEUED",
+        status: isNever ? "ACTIVE" : "QUEUED",
       });
-      setResult("Alert queued successfully.");
+
+      if (isNever) {
+        onNeverStarted();
+        setResult("Alert active until the control room stops it.");
+      } else {
+        setResult(`Alert active for ${durationSeconds} seconds.`);
+
+        window.setTimeout(async () => {
+          try {
+            await set(ref(database, alertPath), false);
+          } catch (error) {
+            console.error("Unable to automatically stop alert:", error);
+          }
+        }, durationSeconds * 1000);
+      }
     } catch (e) {
-      setResult(e instanceof Error ? e.message : "Unable to queue alert.");
+      setResult(e instanceof Error ? e.message : "Unable to start alert.");
     } finally {
       setSending(false);
     }
@@ -117,21 +168,49 @@ function AlertDialog({ helmet, onClose }: { helmet: HelmetData; onClose: () => v
           </div>
           <button onClick={onClose} className="text-xl text-slate-500 hover:text-white">×</button>
         </div>
+
         <div className="mt-5">
           <label className="text-[10px] text-slate-500">Duration</label>
-          <select value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white">
+          <select
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white"
+          >
             <option value="10">10 seconds</option>
             <option value="20">20 seconds</option>
             <option value="30">30 seconds</option>
+            <option value="never">Never — until manually stopped</option>
           </select>
+          {duration === "never" && (
+            <p className="mt-2 text-[9px] text-amber-400">
+              The helmet alarm will continue until the control room presses STOP ALERT.
+            </p>
+          )}
         </div>
+
         <div className="mt-4">
           <label className="text-[10px] text-slate-500">Message</label>
-          <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Emergency alert…" className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white outline-none focus:border-red-500" />
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Emergency alert…"
+            className="mt-1 w-full rounded-md border border-slate-700 bg-[#050b10] p-2 text-xs text-white outline-none focus:border-red-500"
+          />
         </div>
-        {result && <p className={`mt-3 text-[10px] ${result.includes("successfully") ? "text-emerald-400" : "text-red-400"}`}>{result}</p>}
-        <button disabled={sending} onClick={send} className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-red-600 py-2.5 text-xs font-semibold text-white disabled:opacity-50">
-          <Bell className="h-3.5 w-3.5" />{sending ? "SENDING…" : "SEND ALERT"}
+
+        {result && (
+          <p className={`mt-3 text-[10px] ${result.toLowerCase().includes("unable") ? "text-red-400" : "text-emerald-400"}`}>
+            {result}
+          </p>
+        )}
+
+        <button
+          disabled={sending}
+          onClick={send}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-red-600 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          <Bell className="h-3.5 w-3.5" />
+          {sending ? "SENDING…" : "SEND ALERT"}
         </button>
       </div>
     </div>
