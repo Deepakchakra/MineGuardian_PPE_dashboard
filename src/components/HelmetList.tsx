@@ -37,13 +37,9 @@ function createDemoHelmet(helmetId: string): HelmetData {
 export default function HelmetList({
   helmets,
   onAlert,
-  neverActive,
-  onStopNever,
 }: {
   helmets: HelmetData[];
   onAlert: (helmet: HelmetData) => void;
-  neverActive: Record<string, boolean>;
-  onStopNever: (helmet: HelmetData) => void | Promise<void>;
 }) {
   const router = useRouter();
 
@@ -94,30 +90,16 @@ export default function HelmetList({
                 <p className="mt-1 text-[10px] text-slate-500">{h.workerName || h.workerId || "Worker: N/A"}</p>
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAlert(h);
-                  }}
-                  className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] text-red-300 hover:bg-red-500/20"
-                >
-                  ALERT
-                </button>
-                {neverActive[h.helmetId] && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onStopNever(h);
-                    }}
-                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[9px] font-semibold text-amber-300 hover:bg-amber-500/20"
-                  >
-                    STOP ALERT
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAlert(h);
+                }}
+                className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] text-red-300 hover:bg-red-500/20"
+              >
+                ALERT
+              </button>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
