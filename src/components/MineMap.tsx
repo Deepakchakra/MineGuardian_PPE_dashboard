@@ -112,7 +112,7 @@ function CheckpointMarker({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.05, 0]}
       >
-        <circleGeometry args={[0.65, 32]} />
+        <circleGeometry args={[0.95, 32]} />
 
         <meshBasicMaterial
           color="#1683ff"
@@ -127,7 +127,7 @@ function CheckpointMarker({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.08, 0]}
       >
-        <ringGeometry args={[0.38, 0.52, 32]} />
+        <ringGeometry args={[0.55, 0.72, 32]} />
 
         <meshBasicMaterial
           color="#1683ff"
@@ -140,7 +140,7 @@ function CheckpointMarker({
       {/* Pole */}
       <mesh position={[0, 0.55, 0]}>
         <cylinderGeometry
-          args={[0.045, 0.055, 1.1, 16]}
+          args={[0.055, 0.065, 1.35, 16]}
         />
 
         <meshStandardMaterial
@@ -153,8 +153,8 @@ function CheckpointMarker({
       </mesh>
 
       {/* Beacon */}
-      <mesh position={[0, 1.12, 0]}>
-        <sphereGeometry args={[0.15, 20, 20]} />
+      <mesh position={[0, 1.35, 0]}>
+        <sphereGeometry args={[0.20, 20, 20]} />
 
         <meshStandardMaterial
           color="#1683ff"
@@ -167,7 +167,7 @@ function CheckpointMarker({
 
       {/* Beacon light */}
       <pointLight
-        position={[0, 1.12, 0]}
+        position={[0, 1.35, 0]}
         color="#1683ff"
         intensity={1.5}
         distance={4}
@@ -183,7 +183,7 @@ function CheckpointMarker({
       >
         <Html
           center
-          position={[0, 1.65, 0]}
+          position={[0, 1.95, 0]}
           distanceFactor={8}
           transform
           sprite
@@ -191,12 +191,12 @@ function CheckpointMarker({
           <div className="pointer-events-none flex flex-col items-center">
             <div
               className="
-                flex h-8 w-8
+                flex h-10 w-10
                 items-center justify-center
                 rounded-full
                 border-2 border-white
                 bg-blue-600
-                text-[10px]
+                text-[11px]
                 font-bold
                 text-white
                 shadow-[0_0_18px_rgba(0,102,255,0.9)]
@@ -212,8 +212,8 @@ function CheckpointMarker({
                 rounded-md
                 border border-blue-400/40
                 bg-black/90
-                px-2 py-1
-                text-[8px]
+                px-2.5 py-1.5
+                text-[9px]
                 font-bold
                 tracking-wider
                 text-blue-100
@@ -370,7 +370,7 @@ function WorkerMarker({
           onSelect(helmet.helmetId);
         }}
       >
-        <sphereGeometry args={[0.25, 20, 20]} />
+        <sphereGeometry args={[0.34, 24, 24]} />
 
         <meshStandardMaterial
           color={marker.color}
@@ -396,14 +396,14 @@ function WorkerMarker({
       >
         <Html
           center
-          position={[0, 0.7, 0]}
+          position={[0, 0.9, 0]}
           distanceFactor={8}
           transform
           sprite
         >
           <div className="pointer-events-none flex flex-col items-center">
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-[9px] font-bold text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full border-2 text-[10px] font-bold text-white"
               style={{
                 borderColor: selected ? "#ffffff" : marker.color,
                 backgroundColor: marker.color,
@@ -419,8 +419,8 @@ function WorkerMarker({
                 whitespace-nowrap
                 rounded
                 bg-black/90
-                px-1.5 py-0.5
-                text-[8px]
+                px-2 py-1
+                text-[9px]
                 font-semibold
                 text-white
               "

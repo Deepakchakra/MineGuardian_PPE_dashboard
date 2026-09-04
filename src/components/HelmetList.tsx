@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { HardHat, MapPin, Radio } from "lucide-react";
+import { AlertTriangle, HardHat, MapPin, Radio } from "lucide-react";
 import type { HelmetData } from "@/hooks/useHelmetData";
 import { findCheckpoint, getWorkerCoveragePosition, CHECKPOINTS } from "@/lib/mineMap/checkpoints";
 
@@ -34,6 +34,10 @@ function createDemoHelmet(helmetId: string): HelmetData {
   };
 }
 
+function helmetLabel(id: string) {
+  return id.replace(/_/g, "-").toUpperCase();
+}
+
 export default function HelmetList({
   helmets,
   onAlert,
@@ -59,16 +63,21 @@ export default function HelmetList({
   ];
 
   if (!displayHelmets.length) {
-    return <div className="rounded-xl border border-slate-800 bg-[#071118] p-8 text-center text-xs text-slate-500">No helmet records available in Firebase.</div>;
+    return (
+      <div className="rounded-xl border border-slate-800 bg-[#071118] p-6 text-center text-xs text-slate-500">
+        No helmet records available in Firebase.
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5 pb-1">
       {displayHelmets.map((h) => {
         const cp = findCheckpoint(h.checkpoint.where);
         const coverage = cp ? getWorkerCoveragePosition(cp.id, CHECKPOINTS) : null;
         const online = h.wifi_rssi !== null || h.uptime !== null || h.temperature !== null;
         const isDemoInactive = DEMO_HELMET_IDS.includes(h.helmetId.toLowerCase());
+        const command = neverCommands[h.helmetId];
 
         return (
           <div
@@ -82,65 +91,90 @@ export default function HelmetList({
                 router.push(`/helmet/${encodeURIComponent(h.helmetId)}`);
               }
             }}
-            className="w-full cursor-pointer rounded-xl border border-slate-800 bg-[#071118] p-3 text-left transition hover:border-red-500/40 hover:bg-red-500/5 focus:outline-none focus:ring-1 focus:ring-red-500/50"
-            title={`Open ${h.helmetId.replace("_", "-").toUpperCase()} details`}
+            className="group w-full cursor-pointer rounded-xl border border-slate-800/90 bg-gradient-to-br from-[#09151d] to-[#061017] p-3 transition-all duration-200 hover:-translate-y-px hover:border-red-500/35 hover:shadow-[0_8px_24px_rgba(0,0,0,0.24)] focus:outline-none focus:ring-1 focus:ring-red-500/50"
+            title={`Open ${helmetLabel(h.helmetId)} details`}
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900">
-                <HardHat className="h-5 w-5 text-slate-300" />
+            {/* Identity row */}
+            <div className="flex items-center gap-2.5">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700/80 bg-[#0b1822] shadow-inner">
+                <HardHat className="h-5 w-5 text-slate-300 transition-colors group-hover:text-red-300" />
+                <span className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-[#09151d] ${online ? "bg-emerald-400" : "bg-slate-600"}`} />
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold">{h.helmetId.replace("_", "-").toUpperCase()}</span>
-                  <span className={`text-[9px] font-semibold ${online ? "text-emerald-400" : "text-red-400"}`}>● {online ? "ACTIVE" : isDemoInactive ? "INACTIVE" : "OFFLINE"}</span>
+              <div className="min-w-[82px] flex-1 overflow-visible">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="whitespace-nowrap text-[11px] font-bold tracking-wide text-white">
+                    {helmetLabel(h.helmetId)}
+                  </span>
+                  <span className={`shrink-0 text-[8px] font-bold uppercase ${online ? "text-emerald-400" : "text-red-400"}`}>
+                    {online ? "LIVE" : isDemoInactive ? "INACTIVE" : "OFFLINE"}
+                  </span>
                 </div>
-                <p className="mt-1 text-[10px] text-slate-500">{h.workerName || h.workerId || "Worker: N/A"}</p>
+                <p className="mt-1 truncate text-[9px] text-slate-500">
+                  {h.workerName || h.workerId || "Worker not assigned"}
+                </p>
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAlert(h);
-                  }}
-                  className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] text-red-300 hover:bg-red-500/20"
-                >
-                  ALERT
-                </button>
-                {neverCommands[h.helmetId]?.status === "ACTIVE" && (
-                  <button
-                    type="button"
-                    disabled={stopLoading[h.helmetId]}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onStopNever(h);
-                    }}
-                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[9px] font-semibold text-amber-300 hover:bg-amber-500/20"
-                  >
-                    {stopLoading[h.helmetId] ? "STOPPING…" : "STOP ALERT"}
-                  </button>
-                )}
-                {neverCommands[h.helmetId]?.status && (
-                  <span className={`text-[8px] font-semibold ${neverCommands[h.helmetId].status === "ACTIVE" ? "text-emerald-400" : "text-slate-500"}`}>
-                    NEVER: {neverCommands[h.helmetId].status}
-                  </span>
-                )}
-                {stopErrors[h.helmetId] && (
-                  <span className="max-w-[120px] text-right text-[8px] text-red-400">
-                    {stopErrors[h.helmetId]}
-                  </span>
-                )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAlert(h);
+                }}
+                className="flex h-8 w-[76px] shrink-0 items-center justify-center gap-1 rounded-lg border border-red-500/30 bg-red-500/8 px-1.5 text-[8px] font-bold tracking-wide text-red-300 transition hover:border-red-400/50 hover:bg-red-500/15"
+                aria-label={`Send alert to ${helmetLabel(h.helmetId)}`}
+              >
+                <AlertTriangle className="h-3 w-3" />
+                ALERT
+              </button>
+            </div>
+
+            {/* Compact live data row */}
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-800/80 pt-2.5 text-[9px]">
+              <div className="min-w-0 text-slate-500">
+                <Radio className="mr-1 inline h-3 w-3 text-slate-600" />
+                <span>{h.wifi_rssi !== null ? `${h.wifi_rssi} dBm` : "Signal N/A"}</span>
+              </div>
+              <div className="min-w-0 truncate text-slate-500">
+                <MapPin className="mr-1 inline h-3 w-3 text-slate-600" />
+                <span>{cp?.name || h.checkpoint.where || "Checkpoint N/A"}</span>
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
-              <div className="text-slate-500"><Radio className="mr-1 inline h-3 w-3" />{h.wifi_rssi !== null ? `${h.wifi_rssi} dBm` : "Signal N/A"}</div>
-              <div className="text-slate-500"><MapPin className="mr-1 inline h-3 w-3" />{cp?.name || h.checkpoint.where || "Checkpoint N/A"}</div>
-            </div>
+            {coverage && (
+              <div className="mt-2 rounded-lg border border-sky-500/10 bg-sky-500/[0.03] px-2 py-1.5 text-[8px] text-slate-500">
+                <span className="text-slate-600">ROUTE </span>
+                <span className="text-sky-300/80">{coverage.from.name}</span>
+                <span className="px-1 text-slate-700">→</span>
+                <span className="text-sky-300/80">{coverage.to?.name || "END"}</span>
+              </div>
+            )}
 
-            {coverage && <p className="mt-2 text-[9px] text-slate-600">Coverage: {coverage.from.name} → {coverage.to?.name || "End"}</p>}
+            {/* Alert state stays compact and functional */}
+            {command?.status === "ACTIVE" && (
+              <button
+                type="button"
+                disabled={stopLoading[h.helmetId]}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void onStopNever(h);
+                }}
+                className="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-500/8 px-2 py-1.5 text-[8px] font-bold tracking-wide text-amber-300 hover:bg-amber-500/15 disabled:opacity-60"
+              >
+                {stopLoading[h.helmetId] ? "STOPPING ALERT…" : "STOP ACTIVE ALERT"}
+              </button>
+            )}
+
+            {command?.status && command.status !== "ACTIVE" && (
+              <div className="mt-2 flex items-center justify-between text-[8px]">
+                <span className="text-slate-600">NEVER ALERT</span>
+                <span className="font-semibold text-slate-500">{command.status}</span>
+              </div>
+            )}
+
+            {stopErrors[h.helmetId] && (
+              <p className="mt-1 text-[8px] leading-3 text-red-400">{stopErrors[h.helmetId]}</p>
+            )}
           </div>
         );
       })}
