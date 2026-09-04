@@ -12,13 +12,6 @@ export default function PageHeader() {
       {/* RIGHT SIDE */}
       <div className="flex items-center gap-5">
 
-        {/* System Status */}
-        <div className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2">
-          <span className="text-[10px] font-semibold text-red-400">
-            ⚠ SYSTEM MONITORING
-          </span>
-        </div>
-
         {/* Notification */}
         <div className="relative">
           <Bell className="h-4 w-4 text-slate-300" />
