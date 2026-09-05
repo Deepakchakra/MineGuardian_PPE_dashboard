@@ -269,7 +269,7 @@ Important design characteristics:
 - Helmet location is interpreted relative to the latest checkpoint event.
 
 <p align="center">
-  <img src="docs/images/rfid-positioning.png" alt="RFID Checkpoint Positioning" width="85%">
+  <img src="docs/WhatsApp Image 2026-09-05 at 11.13.00 AM.jpeg" alt="RFID Checkpoint Positioning" width="85%">
 </p>
 
 ---
