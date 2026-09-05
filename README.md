@@ -76,7 +76,7 @@ Traditional safety methods can depend heavily on manual observation and delayed 
 # 🏗️ System Architecture
 
 <p align="center">
-  <img src="docs/images/system-architecture.png" alt="MineGuardian System Architecture" width="92%">
+  <img src="docs/WhatsApp Image 2026-09-04 at 12.16.29 PM.jpeg" alt="MineGuardian System Architecture" width="92%">
 </p>
 
 ### Data Flow
