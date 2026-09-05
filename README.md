@@ -595,9 +595,7 @@ RFID checkpoints provide a clear checkpoint-relative positioning model.
 **Cloud:** Firebase Realtime Database  
 **Application:** Underground Worker Safety & Monitoring  
 
-<p align="center">
-  <img src="docs/images/team-photo.jpg" alt="MineGuardian Team" width="70%">
-</p>
+
 
 
 ---
