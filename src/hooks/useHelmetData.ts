@@ -13,5 +13,67 @@ const emptyHelmet=(helmetId="helmet_01"):HelmetData=>({helmetId,temperature:null
 const num=(v:unknown)=>typeof v==="number"&&Number.isFinite(v)?v:null;
 const str=(v:unknown)=>typeof v==="string"&&v.trim()?v:null;
 function parseHelmet(id:string,v:any,map:any):HelmetData{return {helmetId:id,temperature:num(v?.temperature),humidity:num(v?.humidity),gas_raw:num(v?.gas_raw),gas_status:str(v?.gas_status),mq2:{raw:num(v?.mq2?.ppm ?? v?.mq2?.raw ?? v?.mq2?.value ?? v?.mq2_ppm ?? v?.MQ2_ppm ?? v?.MQ2_PPM),status:str(v?.mq2?.status ?? v?.mq2_status ?? v?.MQ2_status)},mq7:{raw:num(v?.mq7?.ppm ?? v?.mq7?.raw ?? v?.mq7?.value ?? v?.mq7_ppm ?? v?.MQ7_ppm ?? v?.MQ7_PPM),status:str(v?.mq7?.status ?? v?.mq7_status ?? v?.MQ7_status)},wifi_rssi:num(v?.wifi_rssi),uptime:num(v?.uptime),battery:num(v?.battery??v?.battery_percentage),vibration:num(v?.vibration??v?.vibration_sensor),workerId:str(v?.worker_id??v?.workerId),workerName:str(v?.worker_name??v?.workerName),checkpoint:{where:str(map?.where),time:str(map?.time)},mpu6050:{accel_x:num(v?.mpu6050?.accel_x),accel_y:num(v?.mpu6050?.accel_y),accel_z:num(v?.mpu6050?.accel_z),gyro_x:num(v?.mpu6050?.gyro_x),gyro_y:num(v?.mpu6050?.gyro_y),gyro_z:num(v?.mpu6050?.gyro_z),temperature:num(v?.mpu6050?.temperature),acceleration_magnitude:num(v?.mpu6050?.acceleration_magnitude),rotation_magnitude:num(v?.mpu6050?.rotation_magnitude),motion_status:str(v?.mpu6050?.motion_status)}};}
-export function useAllHelmetData(){const [helmets,setHelmets]=useState<HelmetData[]>([]);const[loading,setLoading]=useState(true);const[error,setError]=useState<string|null>(null);const[lastUpdated,setLastUpdated]=useState<Date|null>(null);useEffect(()=>{const unsub=onValue(ref(database,"/MineGuardian"),snap=>{const root=snap.val()??{},map=root.mine_map??{};const result=Object.keys(root).filter(k=>/^helmet[_-]?\d+$/i.test(k)&&root[k]&&typeof root[k]==="object").sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(id=>parseHelmet(id,root[id],map[id]));setHelmets(result);setLastUpdated(new Date());setError(null);setLoading(false);},e=>{console.error("Firebase error:",e);setError(e.message);setLoading(false);});return()=>unsub();},[]);return{helmets,loading,error,lastUpdated};}
+function canonicalHelmetId(value:string){
+  const match=value.trim().match(/^(?:helmet[_-]?)0*(\d+)$/i);
+  return match ? `helmet_${match[1].padStart(2,"0")}` : value.trim();
+}
+
+function findHelmetMapEntry(map:Record<string,unknown>, helmetId:string){
+  const canonical=canonicalHelmetId(helmetId).toLowerCase();
+  const key=Object.keys(map).find((candidate)=>canonicalHelmetId(candidate).toLowerCase()===canonical);
+  return key ? map[key] : undefined;
+}
+
+export function useAllHelmetData(){
+  const [helmets,setHelmets]=useState<HelmetData[]>([]);
+  const[loading,setLoading]=useState(true);
+  const[error,setError]=useState<string|null>(null);
+  const[lastUpdated,setLastUpdated]=useState<Date|null>(null);
+
+  useEffect(()=>{
+    const unsub=onValue(ref(database,"/MineGuardian"),snap=>{
+      const root=snap.val()??{};
+      const map=(root.mine_map&&typeof root.mine_map==="object"?root.mine_map:{}) as Record<string,unknown>;
+
+      // A helmet can be registered in the sensor tree, the RFID map tree,
+      // or both. Always build the dashboard list from the UNION so an RFID-only
+      // helmet (for example helmet_02) is still rendered and moves on the map.
+      const ids=new Set<string>();
+
+      Object.keys(root).forEach((key)=>{
+        if(/^helmet[_-]?\d+$/i.test(key)){
+          ids.add(canonicalHelmetId(key));
+        }
+      });
+
+      Object.keys(map).forEach((key)=>{
+        if(/^helmet[_-]?\d+$/i.test(key)){
+          ids.add(canonicalHelmetId(key));
+        }
+      });
+
+      const result=Array.from(ids)
+        .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))
+        .map((id)=>{
+          const sensorKey=Object.keys(root).find((key)=>canonicalHelmetId(key).toLowerCase()===id.toLowerCase());
+          const sensorData=sensorKey&&root[sensorKey]&&typeof root[sensorKey]==="object"?root[sensorKey]:{};
+          const mapData=findHelmetMapEntry(map,id);
+          return parseHelmet(id,sensorData,mapData);
+        });
+
+      setHelmets(result);
+      setLastUpdated(new Date());
+      setError(null);
+      setLoading(false);
+    },e=>{
+      console.error("Firebase error:",e);
+      setError(e.message);
+      setLoading(false);
+    });
+
+    return()=>unsub();
+  },[]);
+
+  return{helmets,loading,error,lastUpdated};
+}
 export function useHelmetData(helmetId="helmet_01"){const[data,setData]=useState<HelmetData>(()=>emptyHelmet(helmetId));const[loading,setLoading]=useState(true);const[error,setError]=useState<string|null>(null);const[lastUpdated,setLastUpdated]=useState<Date|null>(null);useEffect(()=>{setData(emptyHelmet(helmetId));setLoading(true);const unsub=onValue(ref(database,"/MineGuardian"),snap=>{const root=snap.val()??{};if(!root[helmetId]){setData(emptyHelmet(helmetId));setLastUpdated(null);setError(null);setLoading(false);return;}setData(parseHelmet(helmetId,root[helmetId],root.mine_map?.[helmetId]));setLastUpdated(new Date());setError(null);setLoading(false);},e=>{console.error("Firebase error:",e);setError(e.message);setLoading(false);});return()=>unsub();},[helmetId]);return{data,loading,error,lastUpdated};}

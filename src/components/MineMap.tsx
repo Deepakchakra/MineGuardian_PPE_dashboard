@@ -13,43 +13,7 @@ import * as THREE from "three";
 
 import type { HelmetData } from "@/hooks/useHelmetData";
 
-type Checkpoint = {
-  id: string;
-  name: string;
-  position: [number, number, number];
-};
-
-/* ============================================================
-   CHECKPOINT LOCATIONS
-   ============================================================ */
-
-const CHECKPOINTS: Checkpoint[] = [
-  {
-    id: "01",
-    name: "CHECKPOINT 1",
-    position: [0, -0.85, 42],
-  },
-  {
-    id: "02",
-    name: "CHECKPOINT 2",
-    position: [-4.8, -4.65, 0.5],
-  },
-  {
-    id: "03",
-    name: "CHECKPOINT 3",
-    position: [4.8, -5.15, -7.5],
-  },
-  {
-    id: "04",
-    name: "CHECKPOINT 4",
-    position: [-17, -5.35, -7],
-  },
-  {
-    id: "05",
-    name: "CHECKPOINT 5",
-    position: [0, -7.15, -34],
-  },
-];
+import { CHECKPOINTS, findCheckpoint, getHelmetForwardPosition, type Checkpoint } from "@/lib/mineMap/checkpoints";
 
 /* ============================================================
    HELMET MARKER COLORS
@@ -112,7 +76,7 @@ function CheckpointMarker({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.05, 0]}
       >
-        <circleGeometry args={[0.95, 32]} />
+        <circleGeometry args={[1.35, 32]} />
 
         <meshBasicMaterial
           color="#1683ff"
@@ -127,7 +91,7 @@ function CheckpointMarker({
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.08, 0]}
       >
-        <ringGeometry args={[0.55, 0.72, 32]} />
+        <ringGeometry args={[0.78, 1.02, 32]} />
 
         <meshBasicMaterial
           color="#1683ff"
@@ -138,9 +102,9 @@ function CheckpointMarker({
       </mesh>
 
       {/* Pole */}
-      <mesh position={[0, 0.55, 0]}>
+      <mesh position={[0, 0.75, 0]}>
         <cylinderGeometry
-          args={[0.055, 0.065, 1.35, 16]}
+          args={[0.08, 0.095, 1.65, 16]}
         />
 
         <meshStandardMaterial
@@ -153,8 +117,8 @@ function CheckpointMarker({
       </mesh>
 
       {/* Beacon */}
-      <mesh position={[0, 1.35, 0]}>
-        <sphereGeometry args={[0.20, 20, 20]} />
+      <mesh position={[0, 1.65, 0]}>
+        <sphereGeometry args={[0.30, 24, 24]} />
 
         <meshStandardMaterial
           color="#1683ff"
@@ -167,10 +131,10 @@ function CheckpointMarker({
 
       {/* Beacon light */}
       <pointLight
-        position={[0, 1.35, 0]}
+        position={[0, 1.65, 0]}
         color="#1683ff"
         intensity={1.5}
-        distance={4}
+        distance={6}
         decay={2}
       />
 
@@ -183,20 +147,20 @@ function CheckpointMarker({
       >
         <Html
           center
-          position={[0, 1.95, 0]}
-          distanceFactor={8}
+          position={[0, 2.35, 0]}
+          distanceFactor={6}
           transform
           sprite
         >
           <div className="pointer-events-none flex flex-col items-center">
             <div
               className="
-                flex h-10 w-10
+                flex h-14 w-14
                 items-center justify-center
                 rounded-full
                 border-2 border-white
                 bg-blue-600
-                text-[11px]
+                text-[14px]
                 font-bold
                 text-white
                 shadow-[0_0_18px_rgba(0,102,255,0.9)]
@@ -212,8 +176,8 @@ function CheckpointMarker({
                 rounded-md
                 border border-blue-400/40
                 bg-black/90
-                px-2.5 py-1.5
-                text-[9px]
+                px-3 py-2
+                text-[11px]
                 font-bold
                 tracking-wider
                 text-blue-100
@@ -244,134 +208,53 @@ function WorkerMarker({
   selected: boolean;
   onSelect: (id: string) => void;
 }) {
-  const where =
-    helmet.checkpoint?.where?.trim().toUpperCase() ?? "";
+  const checkpoint = findCheckpoint(helmet.checkpoint?.where);
+  if (!checkpoint) return null;
 
-  const checkpointNumber = where.match(/\d+/)?.[0];
+  // NEW MODEL: the helmet is positioned only from the checkpoint it crossed.
+  // There is NO relationship between CP1, CP2, CP3, CP4, or CP5.
+  const basePosition = getHelmetForwardPosition(checkpoint.id, CHECKPOINTS, 3.5);
+  if (!basePosition) return null;
 
-  if (!checkpointNumber) {
-    return null;
-  }
-
-  const currentIndex = Number(checkpointNumber) - 1;
-
-  if (
-    currentIndex < 0 ||
-    currentIndex >= CHECKPOINTS.length
-  ) {
-    return null;
-  }
-
-  const current = CHECKPOINTS[currentIndex];
-
-  const next =
-    CHECKPOINTS[currentIndex + 1] ?? null;
-
-  /*
-   * Base position = midpoint between the last RFID checkpoint and
-   * the next checkpoint. When multiple helmets are on the same
-   * checkpoint-to-checkpoint segment, do NOT place them at exactly
-   * the same coordinates. Instead, spread them into parallel lanes
-   * beside the route using a stable offset derived from helmet ID.
-   */
-  const segmentKey = `${current.id}-${next?.id ?? current.id}`;
-
-  const helmetsOnSameSegment = helmets
-    .filter((item) => {
-      const itemWhere = item.checkpoint?.where?.trim().toUpperCase() ?? "";
-      const itemNumber = itemWhere.match(/\d+/)?.[0];
-
-      if (!itemNumber) return false;
-
-      const itemIndex = Number(itemNumber) - 1;
-      if (itemIndex < 0 || itemIndex >= CHECKPOINTS.length) return false;
-
-      const itemNext = CHECKPOINTS[itemIndex + 1] ?? null;
-      const itemSegmentKey = `${CHECKPOINTS[itemIndex].id}-${itemNext?.id ?? CHECKPOINTS[itemIndex].id}`;
-
-      return itemSegmentKey === segmentKey;
-    })
-    .sort((a, b) => {
-      const aNumber = Number(a.helmetId.match(/\d+/)?.[0] ?? 0);
-      const bNumber = Number(b.helmetId.match(/\d+/)?.[0] ?? 0);
-
-      if (aNumber !== bNumber) return aNumber - bNumber;
-      return a.helmetId.localeCompare(b.helmetId);
-    });
+  // Multiple helmets at the same checkpoint get a small visual lane offset.
+  const helmetsAtCheckpoint = helmets
+    .filter((item) => findCheckpoint(item.checkpoint?.where)?.id === checkpoint.id)
+    .sort((a, b) =>
+      a.helmetId.localeCompare(b.helmetId, undefined, { numeric: true }),
+    );
 
   const laneIndex = Math.max(
     0,
-    helmetsOnSameSegment.findIndex(
-      (item) => item.helmetId === helmet.helmetId,
-    ),
+    helmetsAtCheckpoint.findIndex((item) => item.helmetId === helmet.helmetId),
   );
+  const centeredLane = laneIndex - (helmetsAtCheckpoint.length - 1) / 2;
+  const laneOffset = centeredLane * 1.15;
 
-  /*
-   * Center the helmets around the route:
-   *   1 helmet  -> 0
-   *   2 helmets -> -0.7, +0.7
-   *   3 helmets -> -1.4, 0, +1.4
-   *   4 helmets -> -2.1, -0.7, +0.7, +2.1
-   *
-   * This keeps helmets close to their real route while preventing
-   * markers from visually overwriting each other.
-   */
-  const laneSpacing = 1.4;
-  const centeredLane = laneIndex - (helmetsOnSameSegment.length - 1) / 2;
-  const lateralOffset = centeredLane * laneSpacing;
+  const [fx, , fz] = checkpoint.forward;
+  const forwardLength = Math.hypot(fx, fz);
 
-  const basePosition: [number, number, number] = next
-    ? [
-        (current.position[0] + next.position[0]) / 2,
-        (current.position[1] + next.position[1]) / 2 + 0.4,
-        (current.position[2] + next.position[2]) / 2,
-      ]
-    : [
-        current.position[0],
-        current.position[1] + 0.4,
-        current.position[2],
-      ];
-
-  /*
-   * Calculate a perpendicular direction in the X/Z plane so the
-   * offset moves markers beside the mine route rather than along it.
-   */
-  let position: [number, number, number] = basePosition;
-
-  if (next) {
-    const dx = next.position[0] - current.position[0];
-    const dz = next.position[2] - current.position[2];
-    const length = Math.hypot(dx, dz);
-
-    if (length > 0.001) {
-      const perpendicularX = -dz / length;
-      const perpendicularZ = dx / length;
-
-      position = [
-        basePosition[0] + perpendicularX * lateralOffset,
-        basePosition[1],
-        basePosition[2] + perpendicularZ * lateralOffset,
-      ];
-    }
+  let position = basePosition;
+  if (forwardLength > 0.001 && Math.abs(laneOffset) > 0.001) {
+    const perpendicularX = -fz / forwardLength;
+    const perpendicularZ = fx / forwardLength;
+    position = [
+      basePosition[0] + perpendicularX * laneOffset,
+      basePosition[1],
+      basePosition[2] + perpendicularZ * laneOffset,
+    ];
   }
 
-  /*
-   * Keep HELMET-01 red, while every additional RFID helmet receives
-   * its own stable color based on its helmet number.
-   */
   const marker = getHelmetMarkerColor(helmet.helmetId);
 
   return (
     <group position={position}>
-      {/* Worker beacon */}
       <mesh
         onClick={(event) => {
           event.stopPropagation();
           onSelect(helmet.helmetId);
         }}
       >
-        <sphereGeometry args={[0.34, 24, 24]} />
-
+        <sphereGeometry args={[0.72, 32, 32]} />
         <meshStandardMaterial
           color={marker.color}
           emissive={marker.color}
@@ -379,55 +262,31 @@ function WorkerMarker({
         />
       </mesh>
 
-      {/* Worker light */}
       <pointLight
         color={marker.color}
         intensity={selected ? 2 : 1}
-        distance={4}
+        distance={6}
         decay={2}
       />
 
-      {/* Worker label */}
-      <Billboard
-        follow
-        lockX={false}
-        lockY={false}
-        lockZ={false}
-      >
-        <Html
-          center
-          position={[0, 0.9, 0]}
-          distanceFactor={8}
-          transform
-          sprite
-        >
+      <Billboard follow lockX={false} lockY={false} lockZ={false}>
+        <Html center position={[0, 1.55, 0]} distanceFactor={6} transform sprite>
           <div className="pointer-events-none flex flex-col items-center">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 text-[10px] font-bold text-white"
+              className="flex h-16 w-16 items-center justify-center rounded-full border-3 text-[13px] font-extrabold text-white"
               style={{
                 borderColor: selected ? "#ffffff" : marker.color,
                 backgroundColor: marker.color,
-                boxShadow: `0 0 18px ${marker.glow}`,
+                boxShadow: `0 0 22px ${marker.glow}`,
               }}
             >
-              ●
+              ⛑
             </div>
-
-            <div
-              className="
-                mt-1
-                whitespace-nowrap
-                rounded
-                bg-black/90
-                px-2 py-1
-                text-[9px]
-                font-semibold
-                text-white
-              "
-            >
-              {helmet.helmetId
-                .replace("_", "-")
-                .toUpperCase()}
+            <div className="mt-1 whitespace-nowrap rounded-md border border-white/25 bg-black/95 px-3 py-1.5 text-[11px] font-bold tracking-wide text-white shadow-lg">
+              {helmet.helmetId.replace("_", "-").toUpperCase()}
+            </div>
+            <div className="mt-1 whitespace-nowrap rounded border border-blue-400/30 bg-blue-950/80 px-2 py-1 text-[9px] font-semibold text-blue-200">
+              {checkpoint.name}
             </div>
           </div>
         </Html>
