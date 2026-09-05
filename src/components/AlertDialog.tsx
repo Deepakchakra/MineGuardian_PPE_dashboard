@@ -21,47 +21,60 @@ export default function AlertDialog({
   const [result, setResult] = useState<string | null>(null);
 
   async function send() {
-    if (sending) return;
-    setSending(true);
-    setResult(null);
+  if (sending) return;
 
-    const isNever = duration === "never";
-    const durationSeconds = isNever ? null : Number(duration);
-    const alertPath = `/MineGuardian/${helmet.helmetId}/dashboard_alert`;
+  setSending(true);
+  setResult(null);
 
-    try {
-      const commandRef = push(ref(database, "/MineGuardian/commands"));
-      await set(commandRef, {
-        type: "ALERT",
-        helmet_id: helmet.helmetId,
-        worker_id: helmet.workerId ?? null,
-        message: message.trim() || "Emergency alert from control room",
-        duration_seconds: durationSeconds,
-        duration: isNever ? "NEVER" : `${durationSeconds} seconds`,
-        created_at: serverTimestamp(),
-        status: isNever ? "ACTIVE" : "QUEUED",
-      });
+  const isNever = duration === "never";
+  const durationSeconds = isNever ? null : Number(duration);
+  const alertPath = `/MineGuardian/${helmet.helmetId}/dashboard_alert`;
 
-      if (isNever) {
-        onNeverStarted?.();
-        setResult("Alert ACTIVE until the control room stops it.");
-      } else {
-        await set(ref(database, alertPath), true);
-        setResult(`Alert active for ${durationSeconds} seconds.`);
-        window.setTimeout(async () => {
-          try {
-            await set(ref(database, alertPath), false);
-          } catch (error) {
-            console.error("Unable to automatically stop alert:", error);
-          }
-        }, durationSeconds * 1000);
-      }
-    } catch (error) {
-      setResult(error instanceof Error ? error.message : "Unable to start alert.");
-    } finally {
-      setSending(false);
+  try {
+    const commandRef = push(ref(database, "/MineGuardian/commands"));
+
+    await set(commandRef, {
+      type: "ALERT",
+      helmet_id: helmet.helmetId,
+      worker_id: helmet.workerId ?? null,
+      message: message.trim() || "Emergency alert from control room",
+      duration_seconds: durationSeconds,
+      duration: isNever ? "NEVER" : `${durationSeconds} seconds`,
+      created_at: serverTimestamp(),
+      status: isNever ? "ACTIVE" : "QUEUED",
+    });
+
+    if (isNever) {
+      onNeverStarted?.();
+      setResult("Alert ACTIVE until the control room stops it.");
+    } else {
+      const seconds = durationSeconds ?? 0;
+
+      await set(ref(database, alertPath), true);
+
+      setResult(`Alert active for ${seconds} seconds.`);
+
+      window.setTimeout(async () => {
+        try {
+          await set(ref(database, alertPath), false);
+        } catch (error) {
+          console.error(
+            "Unable to automatically stop alert:",
+            error
+          );
+        }
+      }, seconds * 1000);
     }
+  } catch (error) {
+    setResult(
+      error instanceof Error
+        ? error.message
+        : "Unable to start alert."
+    );
+  } finally {
+    setSending(false);
   }
+}
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">

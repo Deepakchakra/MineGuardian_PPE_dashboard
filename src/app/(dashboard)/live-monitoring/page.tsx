@@ -63,7 +63,7 @@ export default function LiveMonitoringPage() {
 
         <SensorCard
           title="Wi-Fi Signal"
-          value={data.wifi?.rssi}
+          value={data.wifi_rssi}
           unit="dBm"
         />
 
