@@ -599,7 +599,6 @@ RFID checkpoints provide a clear checkpoint-relative positioning model.
   <img src="docs/images/team-photo.jpg" alt="MineGuardian Team" width="70%">
 </p>
 
-> Replace `docs/images/team-photo.jpg` with your team photograph.
 
 ---
 
@@ -612,10 +611,11 @@ RFID checkpoints provide a clear checkpoint-relative positioning model.
 Add your team members here:
 
 ```text
-1. Name — Role
-2. Name — Role
-3. Name — Role
-4. Name — Role
+1. Kishor C
+2. Deepak chakrasali
+3. Suhas chandra thejasvi N
+4. Dhanush Gowda
+5. Darshan K M
 ```
 
 ---
