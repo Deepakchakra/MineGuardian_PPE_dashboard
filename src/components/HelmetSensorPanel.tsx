@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Gauge, Maximize2, Thermometer, Wifi, X } from "lucide-react";
+import { Gauge, Thermometer, Wifi } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -50,8 +50,6 @@ function CurrentAxisValues({
   values,
 }: {
   values: [number | null, number | null, number | null];
-  expanded?: boolean;
-  onExpand?: () => void;
 }) {
   const axes = [
     { label: "X", value: values[0], className: "text-red-400", dot: "bg-red-400" },
@@ -74,6 +72,62 @@ function CurrentAxisValues({
   );
 }
 
+
+function getAutoYDomain(
+  title: string,
+  data: { timestamp: number; value: number | null }[],
+  fallback: [number, number],
+): [number, number] {
+  const values = data
+    .map((point) => point.value)
+    .filter((point): point is number => typeof point === "number" && Number.isFinite(point));
+
+  if (values.length === 0) return fallback;
+
+  const normalizedTitle = title.toLowerCase();
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+
+  // Keep each sensor inside its real operating range while zooming tightly
+  // around the values that are actually arriving from Firebase.
+  if (normalizedTitle === "temperature") {
+    const SENSOR_MIN = 0;
+    const SENSOR_MAX = 100;
+    const span = Math.max(maxValue - minValue, 2);
+    const padding = Math.max(span * 0.18, 1.5);
+
+    let lower = Math.floor((minValue - padding) / 5) * 5;
+    let upper = Math.ceil((maxValue + padding) / 5) * 5;
+
+    lower = Math.max(SENSOR_MIN, lower);
+    upper = Math.min(SENSOR_MAX, upper);
+
+    if (upper - lower < 10) {
+      const center = (lower + upper) / 2;
+      lower = Math.max(SENSOR_MIN, Math.floor((center - 5) / 5) * 5);
+      upper = Math.min(SENSOR_MAX, Math.ceil((center + 5) / 5) * 5);
+    }
+
+    return [lower, Math.max(lower + 10, upper)];
+  }
+
+  if (normalizedTitle === "methane") {
+    const SENSOR_MIN = 0;
+    const SENSOR_MAX = 1100;
+    const upper = Math.max(10, Math.ceil((maxValue * 1.25) / 10) * 10);
+    return [SENSOR_MIN, Math.min(SENSOR_MAX, upper)];
+  }
+
+  if (normalizedTitle === "carbon monoxide") {
+    const SENSOR_MIN = 0;
+    const SENSOR_MAX = 600;
+    const upper = Math.max(5, Math.ceil((maxValue * 1.25) / 5) * 5);
+    return [SENSOR_MIN, Math.min(SENSOR_MAX, upper)];
+  }
+
+  return fallback;
+}
+
 function ScalarChart({
   title,
   unit,
@@ -82,8 +136,6 @@ function ScalarChart({
   stroke,
   yDomain,
   referenceLines,
-  expanded = false,
-  onExpand,
 }: {
   title: string;
   unit: string;
@@ -92,43 +144,32 @@ function ScalarChart({
   stroke: string;
   yDomain?: [number, number];
   referenceLines?: { value: number; stroke: string; label: string }[];
-  expanded?: boolean;
-  onExpand?: () => void;
 }) {
   const hasData = data.some((point) => point.value !== null);
+  const autoYDomain = getAutoYDomain(
+    title,
+    data,
+    yDomain ?? [0, 100],
+  );
 
   return (
-    <div
-      className={`rounded-xl border border-slate-800 bg-[#071118] p-3 ${onExpand ? "cursor-pointer transition-colors hover:border-slate-600" : ""}`}
-      onClick={onExpand}
-      role={onExpand ? "button" : undefined}
-      tabIndex={onExpand ? 0 : undefined}
-      onKeyDown={(event) => {
-        if (onExpand && (event.key === "Enter" || event.key === " ")) {
-          event.preventDefault();
-          onExpand();
-        }
-      }}
-    >
+    <div className="rounded-xl border border-slate-800 bg-[#071118] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
             {title}
           </p>
-          <p className="mt-1 text-[9px] text-slate-600">Live trend</p>
+          <p className="mt-1 text-[9px] text-slate-600">Live trend • auto scale</p>
         </div>
-        <div className="flex items-start gap-2 text-right">
-          <div>
-            <p className="text-base font-semibold text-white">
+        <div className="text-right">
+          <p className="text-base font-semibold text-white">
             {current === null ? "N/A" : `${current}${unit}`}
-            </p>
-            <p className="text-[9px] text-slate-600">Current</p>
-          </div>
-          {onExpand && <Maximize2 className="mt-1 h-3.5 w-3.5 text-slate-600" />}
+          </p>
+          <p className="text-[9px] text-slate-600">Current</p>
         </div>
       </div>
 
-      <div className={`${expanded ? "h-[460px]" : "h-40"} w-full`}>
+      <div className="h-40 w-full">
         {!hasData ? (
           <div className="flex h-full items-center justify-center text-[10px] text-slate-600">
             Waiting for live sensor data…
@@ -150,7 +191,7 @@ function ScalarChart({
                 tickFormatter={(timestamp) => new Date(Number(timestamp)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               />
               <YAxis
-                domain={yDomain ?? ["auto", "auto"]}
+                domain={autoYDomain}
                 tick={{ fill: "#475569", fontSize: 8 }}
                 axisLine={false}
                 tickLine={false}
@@ -196,32 +237,17 @@ function AxisChart({
   title,
   data,
   values,
-  expanded = false,
-  onExpand,
 }: {
   title: string;
   data: { timestamp: number; x: number | null; y: number | null; z: number | null }[];
   values: [number | null, number | null, number | null];
-  expanded?: boolean;
-  onExpand?: () => void;
 }) {
   const hasData = data.some(
     (point) => point.x !== null || point.y !== null || point.z !== null,
   );
 
   return (
-    <div
-      className={`rounded-xl border border-slate-800 bg-[#071118] p-3 ${onExpand ? "cursor-pointer transition-colors hover:border-slate-600" : ""}`}
-      onClick={onExpand}
-      role={onExpand ? "button" : undefined}
-      tabIndex={onExpand ? 0 : undefined}
-      onKeyDown={(event) => {
-        if (onExpand && (event.key === "Enter" || event.key === " ")) {
-          event.preventDefault();
-          onExpand();
-        }
-      }}
-    >
+    <div className="rounded-xl border border-slate-800 bg-[#071118] p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -233,13 +259,10 @@ function AxisChart({
             <span className="text-green-400">● Z</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <CurrentAxisValues values={values} />
-          {onExpand && <Maximize2 className="h-3.5 w-3.5 text-slate-600" />}
-        </div>
+        <CurrentAxisValues values={values} />
       </div>
 
-      <div className={`${expanded ? "h-[460px]" : "h-52"} w-full`}>
+      <div className="h-52 w-full">
         {!hasData ? (
           <div className="flex h-full items-center justify-center text-[10px] text-slate-600">
             Waiting for live sensor data…
@@ -327,7 +350,6 @@ export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | nul
   const [history, setHistory] = useState<
     { timestamp: number; temperature: number | null; mq2: number | null; mq7: number | null; accelX: number | null; accelY: number | null; accelZ: number | null; gyroX: number | null; gyroY: number | null; gyroZ: number | null }[]
   >([]);
-  const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
   useEffect(() => {
     if (!helmet) {
@@ -417,22 +439,9 @@ export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | nul
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        <ScalarChart
-          title="Temperature"
-          unit=" °C"
-          current={helmet.temperature}
-          data={temperatureHistory}
-          stroke="#f59e0b"
-          yDomain={[0, 100]}
-          referenceLines={[
-            { value: 40, stroke: "#4ade80", label: "40 °C" },
-            { value: 60, stroke: "#facc15", label: "60 °C" },
-            { value: 80, stroke: "#ef4444", label: "80 °C" },
-          ]}
-          onExpand={() => setExpandedChart("temperature")}
-        />
-        <ScalarChart title="Methane" unit=" PPM" current={helmet.mq2.raw} data={mq2History} stroke="#ef4444" yDomain={[0, 1100]} referenceLines={[{ value: 150, stroke: "#4ade80", label: "150 PPM" }, { value: 200, stroke: "#facc15", label: "200 PPM" }, { value: 1000, stroke: "#ef4444", label: "1000 PPM" }]} onExpand={() => setExpandedChart("methane")} />
-        <ScalarChart title="Carbon Monoxide" unit=" PPM" current={helmet.mq7.raw} data={mq7History} stroke="#38bdf8" yDomain={[0, 600]} referenceLines={[{ value: 80, stroke: "#4ade80", label: "80 PPM" }, { value: 100, stroke: "#facc15", label: "100 PPM" }, { value: 500, stroke: "#ef4444", label: "500 PPM" }]} onExpand={() => setExpandedChart("co")} />
+        <ScalarChart title="Temperature" unit=" °C" current={helmet.temperature} data={temperatureHistory} stroke="#f59e0b" yDomain={[0, 100]} referenceLines={[{ value: 40, stroke: "#4ade80", label: "40 °C" }, { value: 60, stroke: "#facc15", label: "60 °C" }, { value: 80, stroke: "#ef4444", label: "80 °C" }]} />
+        <ScalarChart title="Methane" unit=" PPM" current={helmet.mq2.raw} data={mq2History} stroke="#ef4444" yDomain={[0, 1100]} referenceLines={[{ value: 150, stroke: "#4ade80", label: "150 PPM" }, { value: 200, stroke: "#facc15", label: "200 PPM" }, { value: 1000, stroke: "#ef4444", label: "1000 PPM" }]} />
+        <ScalarChart title="Carbon Monoxide" unit=" PPM" current={helmet.mq7.raw} data={mq7History} stroke="#38bdf8" yDomain={[0, 600]} referenceLines={[{ value: 80, stroke: "#4ade80", label: "80 PPM" }, { value: 100, stroke: "#facc15", label: "100 PPM" }, { value: 500, stroke: "#ef4444", label: "500 PPM" }]} />
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
@@ -440,104 +449,13 @@ export default function HelmetSensorPanel({ helmet }: { helmet: HelmetData | nul
           title="Accelerometer — X / Y / Z"
           data={accelerometerHistory}
           values={[helmet.mpu6050.accel_x, helmet.mpu6050.accel_y, helmet.mpu6050.accel_z]}
-          onExpand={() => setExpandedChart("accelerometer")}
         />
         <AxisChart
           title="Gyroscope — X / Y / Z"
           data={gyroscopeHistory}
           values={[helmet.mpu6050.gyro_x, helmet.mpu6050.gyro_y, helmet.mpu6050.gyro_z]}
-          onExpand={() => setExpandedChart("gyroscope")}
         />
       </div>
-
-      {expandedChart && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
-          onClick={() => setExpandedChart(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Expanded sensor graph"
-        >
-          <div
-            className="relative w-full max-w-6xl rounded-2xl border border-slate-700 bg-[#050b10] p-4 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setExpandedChart(null)}
-              className="absolute right-4 top-4 z-10 rounded-lg border border-slate-700 bg-[#071118] p-2 text-slate-400 transition hover:border-slate-500 hover:text-white"
-              aria-label="Close expanded graph"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            {expandedChart === "temperature" && (
-              <ScalarChart
-                title="Temperature"
-                unit=" °C"
-                current={helmet.temperature}
-                data={temperatureHistory}
-                stroke="#f59e0b"
-                yDomain={[0, 100]}
-                referenceLines={[
-                  { value: 40, stroke: "#4ade80", label: "40 °C" },
-                  { value: 60, stroke: "#facc15", label: "60 °C" },
-                  { value: 80, stroke: "#ef4444", label: "80 °C" },
-                ]}
-                expanded
-              />
-            )}
-            {expandedChart === "methane" && (
-              <ScalarChart
-                title="Methane"
-                unit=" PPM"
-                current={helmet.mq2.raw}
-                data={mq2History}
-                stroke="#ef4444"
-                yDomain={[0, 1100]}
-                referenceLines={[
-                  { value: 150, stroke: "#4ade80", label: "150 PPM" },
-                  { value: 200, stroke: "#facc15", label: "200 PPM" },
-                  { value: 1000, stroke: "#ef4444", label: "1000 PPM" },
-                ]}
-                expanded
-              />
-            )}
-            {expandedChart === "co" && (
-              <ScalarChart
-                title="Carbon Monoxide"
-                unit=" PPM"
-                current={helmet.mq7.raw}
-                data={mq7History}
-                stroke="#38bdf8"
-                yDomain={[0, 600]}
-                referenceLines={[
-                  { value: 80, stroke: "#4ade80", label: "80 PPM" },
-                  { value: 100, stroke: "#facc15", label: "100 PPM" },
-                  { value: 500, stroke: "#ef4444", label: "500 PPM" },
-                ]}
-                expanded
-              />
-            )}
-            {expandedChart === "accelerometer" && (
-              <AxisChart
-                title="Accelerometer — X / Y / Z"
-                data={accelerometerHistory}
-                values={[helmet.mpu6050.accel_x, helmet.mpu6050.accel_y, helmet.mpu6050.accel_z]}
-                expanded
-              />
-            )}
-            {expandedChart === "gyroscope" && (
-              <AxisChart
-                title="Gyroscope — X / Y / Z"
-                data={gyroscopeHistory}
-                values={[helmet.mpu6050.gyro_x, helmet.mpu6050.gyro_y, helmet.mpu6050.gyro_z]}
-                expanded
-              />
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <SensorCard title="Acceleration Magnitude" valueText={value(helmet.mpu6050.acceleration_magnitude)} icon={<span className="text-[9px] font-bold">ACC</span>} />
