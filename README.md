@@ -118,7 +118,7 @@ Traditional safety methods can depend heavily on manual observation and delayed 
 # 🪖 Smart Helmet Hardware
 
 <p align="center">
-  <img src="docs/images/Screenshot 2026-09-05 110923.png" alt="MineGuardian Smart Helmet Hardware" width="75%">
+  <img src="docs/Screenshot 2026-09-05 110923.png" alt="MineGuardian Smart Helmet Hardware" width="75%">
 </p>
 
 ### Main Components
