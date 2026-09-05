@@ -277,7 +277,7 @@ Important design characteristics:
 # 📊 Dashboard
 
 <p align="center">
-  <img src="docs/images/dashboard-main.png" alt="MineGuardian Dashboard" width="95%">
+  <img src="docs/WhatsApp Image 2026-09-05 at 10.05.21 AM.jpeg" alt="MineGuardian Dashboard" width="95%">
 </p>
 
 The dashboard is designed to provide a single monitoring view for:
