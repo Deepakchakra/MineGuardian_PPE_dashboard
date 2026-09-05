@@ -2,7 +2,7 @@
 ### Smart Mining Helmet & Real-Time Mine Safety Monitoring System
 
 <p align="center">
-  <img src="docs/images/mineguardian-banner.png" alt="MineGuardian Banner" width="100%">
+  <img src="docs/ChatGPT Image Sep 5, 2026, 11_09_17 AM (1).png" alt="MineGuardian Banner" width="100%">
 </p>
 
 <p align="center">
