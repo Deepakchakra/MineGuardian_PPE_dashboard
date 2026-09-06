@@ -635,5 +635,5 @@ MIT License
 If you find **MineGuardian** useful or interesting, consider giving the repository a ⭐ and sharing the project.
 
 <p align="center">
-  <b>MineGuardian — Safer Mines Through Connected Intelligence.</b>
+  <b>MineGuardian — Safer Mines Through Connected Intelligence...</b>
 </p>
